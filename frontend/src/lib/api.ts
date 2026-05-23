@@ -68,12 +68,56 @@ async function json<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export const api = {
-  uploadXlsx: async (file: File): Promise<UploadResponse> => {
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+}
+
+/**
+ * XHR-based upload that exposes real upload progress.
+ * `fetch` doesn't expose ReadableStream upload progress in any current browser,
+ * so for the 428 MB workbook we drop to XHR just here — keeps everywhere else
+ * on fetch.
+ */
+function uploadXlsxXhr(
+  file: File,
+  onProgress?: (p: UploadProgress) => void,
+): Promise<UploadResponse> {
+  return new Promise((resolve, reject) => {
     const fd = new FormData();
     fd.append("file", file);
-    return json<UploadResponse>("/api/uploads", { method: "POST", body: fd });
-  },
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/uploads", true);
+    xhr.responseType = "text";
+    if (onProgress) {
+      xhr.upload.onprogress = (e: ProgressEvent) => {
+        // `lengthComputable` is true once the browser sees Content-Length on the
+        // outgoing request, which is always the case for FormData.
+        if (e.lengthComputable) onProgress({ loaded: e.loaded, total: e.total });
+      };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as UploadResponse);
+        } catch (parseErr) {
+          reject(new Error(`upload ok but response parse failed: ${parseErr}`));
+        }
+      } else {
+        reject(new Error(`${xhr.status} ${xhr.statusText} on /api/uploads`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("network error on /api/uploads"));
+    xhr.onabort = () => reject(new Error("upload aborted"));
+    xhr.send(fd);
+  });
+}
+
+export const api = {
+  uploadXlsx: (
+    file: File,
+    onProgress?: (p: UploadProgress) => void,
+  ): Promise<UploadResponse> => uploadXlsxXhr(file, onProgress),
   getUpload: (id: string) => json<UploadResponse>(`/api/uploads/${id}`),
   createJob: (body: {
     upload_id: string;

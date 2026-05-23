@@ -6,22 +6,29 @@ import { GlassButton } from "@/components/GlassButton";
 import { GlassSpinner } from "@/components/GlassSpinner";
 import { cn } from "@/lib/cn";
 
+function fmtMB(bytes: number): string {
+  return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+
 export function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const navigate = useNavigate();
 
   const submit = async () => {
     if (!file) return;
     setUploading(true);
     setError(null);
+    setProgress({ loaded: 0, total: file.size });
     try {
-      const res = await api.uploadXlsx(file);
+      const res = await api.uploadXlsx(file, (p) => setProgress(p));
       navigate(`/configure/${res.id}`);
     } catch (e) {
       setError(String(e));
+      setProgress(null);
     } finally {
       setUploading(false);
     }
@@ -129,6 +136,44 @@ export function UploadPage() {
       {error && (
         <div className="glass-card underglow-bad px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
           {error}
+        </div>
+      )}
+
+      {uploading && progress && progress.total > 0 && (
+        <div className="glass-card space-y-2 px-4 py-3">
+          <div className="flex items-baseline justify-between text-xs">
+            <span className="font-medium text-slate-600 dark:text-slate-300">上传中</span>
+            <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400">
+              {fmtMB(progress.loaded)} / {fmtMB(progress.total)}{" "}
+              <span className="text-aurora-magenta">
+                · {((progress.loaded / progress.total) * 100).toFixed(0)}%
+              </span>
+            </span>
+          </div>
+          <div
+            className="relative h-2 overflow-hidden rounded-full bg-white/40 dark:bg-white/10"
+            aria-label="upload progress"
+            role="progressbar"
+            aria-valuenow={Math.round((progress.loaded / progress.total) * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="absolute inset-y-0 left-0 transition-[width] duration-150 ease-out"
+              style={{
+                width: `${Math.min(100, (progress.loaded / progress.total) * 100)}%`,
+                background:
+                  "linear-gradient(90deg, rgba(240,171,252,0.85), rgba(125,211,252,0.85))",
+                boxShadow:
+                  "0 0 12px rgba(192,132,252,0.55), inset 0 1px 0 rgba(255,255,255,0.7)",
+              }}
+            />
+          </div>
+          {progress.loaded >= progress.total && (
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+              文件已传完，后端解析 sheet 中…
+            </div>
+          )}
         </div>
       )}
 

@@ -322,11 +322,45 @@ def get_image(u: str) -> Response:
     return FileResponse(path)
 
 
+def _enrich_eval_metrics(raw: dict) -> dict:
+    """Project raw eval-run JSON into the metric shape the frontend reads.
+
+    The eval harness writes `mean_ssim`, `mean_phash`, `pass_rate_ssim_50`,
+    `cost_usd_estimate`, and a `pairs` list with per-sample `selection_correct`
+    / `iou_vs_redbox` fields. The frontend reads `selection_accuracy`,
+    `mean_iou`, `mean_ssim`, `cost_usd`, `pass_rate`, `n_samples`. Compute the
+    missing aggregates here so the leaderboard and the metric cards aren't
+    full of `—` placeholders.
+    """
+    out = dict(raw or {})
+    pairs = out.get("pairs") or []
+    # selection_accuracy = (# pairs with selection_correct=True) / (# pairs
+    # where selection_correct is not None). `None` means the pair had no
+    # ground-truth red-box, so it shouldn't count for/against accuracy.
+    sels = [p.get("selection_correct") for p in pairs]
+    judged = [s for s in sels if s is not None]
+    if judged:
+        out.setdefault("selection_accuracy", sum(1 for s in judged if s) / len(judged))
+    # mean_iou over pairs where iou_vs_redbox is a number
+    ious = [p.get("iou_vs_redbox") for p in pairs if isinstance(p.get("iou_vs_redbox"), (int, float))]
+    if ious:
+        out.setdefault("mean_iou", sum(ious) / len(ious))
+    # Frontend-friendly aliases
+    if "cost_usd" not in out and "cost_usd_estimate" in out:
+        out["cost_usd"] = out["cost_usd_estimate"]
+    if "pass_rate" not in out and "pass_rate_ssim_50" in out:
+        out["pass_rate"] = out["pass_rate_ssim_50"]
+    if "n_samples" not in out and "samples" in out:
+        out["n_samples"] = out["samples"]
+    return out
+
+
 @app.get("/api/dev/eval-runs")
 def eval_runs() -> list[dict]:
     runs = store.list_eval_runs()
     return [{"id": r["id"], "prompt_version": r["prompt_version"], "model": r["model"],
-             "metrics": json.loads(r["metrics_json"]), "created_at": r["created_at"]} for r in runs]
+             "metrics": _enrich_eval_metrics(json.loads(r["metrics_json"])),
+             "created_at": r["created_at"]} for r in runs]
 
 
 # --- Static SPA ------------------------------------------------------------
