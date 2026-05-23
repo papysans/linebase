@@ -27,10 +27,20 @@ class ModelOption:
 
 MODEL_WHITELIST: tuple[ModelOption, ...] = (
     ModelOption(
+        id="gpt-5.5",
+        provider="openai",
+        label="GPT-5.5 (默认 · 真实世界最稳)",
+        notes="finished 6/6 on the v2 night batch; default since 2026-05-23",
+    ),
+    ModelOption(
         id="doubao-seed-2-0-pro-260215",
         provider="ark",
-        label="Doubao Seed 2.0 Pro (默认 · 最准)",
-        notes="thinking model; 71% sel-acc bench winner",
+        label="Doubao Seed 2.0 Pro (fixture 最准 · 真实数据偶发 stall)",
+        notes=(
+            "71% sel-acc bench winner BUT stalled mid-batch on a real-world "
+            "9-evidence row 2026-05-23; per-call timeout now caps the blast "
+            "radius. See llm-gotchas.md before promoting to default."
+        ),
     ),
     ModelOption(
         id="Qwen/Qwen3-VL-30B-A3B-Instruct",
@@ -47,20 +57,17 @@ MODEL_WHITELIST: tuple[ModelOption, ...] = (
     ModelOption(
         id="doubao-seed-2-0-mini-260428",
         provider="ark",
-        label="Doubao Seed 2.0 Mini (国产·快)",
-        notes="thinking model; occasional 150 s timeouts",
+        label="Doubao Seed 2.0 Mini (国产·快 · 真实数据偶发 stall)",
+        notes=(
+            "thinking model; occasional 150 s timeouts. Shares the multi-"
+            "evidence stall behavior of the pro variant — see llm-gotchas.md."
+        ),
     ),
     ModelOption(
         id="zai-org/GLM-4.5V",
         provider="siliconflow",
         label="GLM-4.5V",
         notes="wraps output in <|box|> tokens",
-    ),
-    ModelOption(
-        id="gpt-5.5",
-        provider="openai",
-        label="GPT-5.5 (1m1ng 中转)",
-        notes="fallback; bbox less precise",
     ),
 )
 

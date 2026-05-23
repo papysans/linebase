@@ -73,6 +73,65 @@ rather than inside the OpenAI SDK.
 
 ---
 
+## Doubao Seed 2.0 — real-world stalls on multi-evidence rows
+
+Symptom: a production pipeline batch using `LINEBASE_DEFAULT_MODEL=doubao-seed-2-0-pro-260215`
+emits one `progress` event for `0/6` rows and then never advances. The
+uvicorn process is alive (CPU < 11 s after the stall) but the
+`pipeline_runner._process_row` task is blocked inside an OpenAI SDK
+`chat.completions.create` call that never returns — the underlying HTTPS
+connection to `ark.cn-beijing.volces.com` is just sitting there. The SSE
+consumer eventually disconnects with `httpx.ReadError` after the client
+gives up, but the server-side call never raises.
+
+Observed:
+
+- Doubao Seed 2.0 Pro wins the 10-fixture bench (71 % selection accuracy,
+  zero failures — see `research/lite-benchmark-4way.md`).
+- On the same night, two consecutive 6-row production batches over a
+  `图形商标tro` worksheet hung on `row_index=7` (`appno=77354840`,
+  9 high-res USPTO casedoc evidence images). Once with
+  `doubao-seed-2-0-pro-260215`, once with `doubao-seed-2-0-mini-260428`.
+- Forensics: `scripts/_e2e_out/night_run_v2/launcher2.log`,
+  `launcher3.log`, and `uvicorn2.log` (the latter shows the LLM call was
+  accepted but no `row_done` ever fired).
+- Same model, same logo, same 9 evidences, same `match_logo_in_photo`
+  entry point — reproduced ~16 hours later in isolation
+  (`scripts/_diag_doubao_stall2.py`) — completed 9/9 in 246 s cumulative
+  with no stall. So the bug is **load- / time-of-day-correlated, not
+  per-image**. Likely candidates: Volcengine Ark per-tenant capacity at
+  2-3 a.m. CST, 1m1ng-proxy keep-alive, or anyio threadpool exhaustion
+  when 9 sequential `run_in_executor` calls share one HTTP connection.
+
+Mitigation:
+
+- `linebase.llm._create_completion` now always passes `timeout=` to the
+  OpenAI SDK. The default is `LINEBASE_LLM_TIMEOUT_S` (env, default 90 s).
+  A stalled call raises `openai.APITimeoutError`; the pipeline catches it,
+  marks the evidence as `{"error": "llm: ..."}` in the row meta, and
+  continues with the next evidence. A single bad evidence can never
+  again hang an entire batch indefinitely.
+- Same timeout applies to `verify_crop`.
+- Production default reverted to `gpt-5.5` on 2026-05-23. Doubao stays
+  on the whitelist (still useful for the dev-loop bench) but with a
+  warning label and a `notes` field that points back here.
+
+What we are NOT doing:
+
+- SDK-level retries stay at `max_retries=0` (see Kimi gotcha above). A
+  60 s timeout that retries 2× would be a 180 s blocking call that the
+  SSE consumer can't cancel — worse than the original stall.
+- We do not retry the timed-out evidence; it just gets skipped. A single
+  evidence is rarely the only one for a row; the row's `best_*` selection
+  picks from whatever did come back.
+
+If you ever flip Doubao back to default, do a 6-row smoke run on a real
+worksheet (NOT the bench fixtures) before promoting. The fixture set
+underspecifies the "many high-res evidences per row" tail that triggered
+this.
+
+---
+
 ## USPTO TSDR returns 403 to `linebase/0.1` User-Agent
 
 Symptom: `fetch.py` downloads from `https://tsdr.uspto.gov/img/...` return

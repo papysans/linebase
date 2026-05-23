@@ -7,12 +7,20 @@ Prompt text lives in `prompts/v_<n>.md`; the active version is picked by env var
 Multi-provider note: pass `model=` and/or `provider=` to override the default
 provider routing — used by the benchmark script. Without overrides we fall back
 to `Settings.primary` for full backward compatibility.
+
+Per-call timeout: every call goes through `_create_completion` which passes
+`timeout=` to the OpenAI SDK. Default is `LINEBASE_LLM_TIMEOUT_S` env (90 s).
+A stalled provider request raises `openai.APITimeoutError` after that budget,
+which the pipeline catches → row marked as needs_review / failed evidence,
+and the rest of the batch continues. See spec/backend/llm-gotchas.md
+"Doubao Seed 2.0 — real-world stalls" for the original bug.
 """
 from __future__ import annotations
 
 import base64
 import json
 import mimetypes
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +28,23 @@ from pathlib import Path
 from openai import OpenAI
 
 from linebase.config import ProviderConfig, Settings
+
+
+def _default_timeout_s() -> float:
+    """Per-call OpenAI SDK timeout. Configurable via LINEBASE_LLM_TIMEOUT_S env.
+
+    Default 90 s — covers Doubao Seed 2.0 Pro's 99th-percentile latency (~42 s
+    in the 9-evidence walk diagnostic) with comfortable headroom. Set lower in
+    fixture/bench contexts where you'd rather fail fast and retry.
+    """
+    raw = os.environ.get("LINEBASE_LLM_TIMEOUT_S", "").strip()
+    if not raw:
+        return 90.0
+    try:
+        v = float(raw)
+    except ValueError:
+        return 90.0
+    return max(1.0, v)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROMPTS_DIR = REPO_ROOT / "prompts"
@@ -276,13 +301,16 @@ def _create_completion(
     timeout: float | None,
 ):
     # The OpenAI Python SDK accepts `timeout` per-call; pass it through when set.
+    # When caller didn't supply a timeout, default to LINEBASE_LLM_TIMEOUT_S
+    # (90 s) so a stalled provider can never hang the pipeline indefinitely —
+    # see module docstring for the night-of-2026-05-23 Doubao stall background.
+    eff_timeout = timeout if timeout is not None else _default_timeout_s()
     kwargs: dict = {
         "model": model,
         "messages": messages,
         "temperature": 0,
+        "timeout": eff_timeout,
     }
-    if timeout is not None:
-        kwargs["timeout"] = timeout
     return client.chat.completions.create(**kwargs)
 
 
