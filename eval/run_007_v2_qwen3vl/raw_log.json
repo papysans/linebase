@@ -1,0 +1,1485 @@
+[
+  {
+    "sample": "1044246",
+    "evidence": "01_rId82_image79.png",
+    "found": true,
+    "bbox": [
+      58,
+      163,
+      818,
+      632
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.75,
+    "composite_score": 0.7820000000000001,
+    "reason": "The registered trademark is fully visible and clearly used as branding on a product tag.",
+    "usage": {
+      "prompt_tokens": 3260,
+      "completion_tokens": 96,
+      "total_tokens": 3356,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.009110000000000002,
+    "latency_s": 6.52,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1044246",
+    "evidence": "02_rId83_image80.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      998,
+      998
+    ],
+    "confidence": 0.92,
+    "clarity": 0.8,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7544,
+    "reason": "The registered trademark is fully visible and clearly used as branding on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1185,
+      "completion_tokens": 98,
+      "total_tokens": 1283,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003942500000000001,
+    "latency_s": 5.79,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1044246",
+    "evidence": "03_rId84_image81.png",
+    "found": true,
+    "bbox": [
+      545,
+      388,
+      917,
+      952
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as embossed branding on the boot, matching the logo's overall shape and internal features.",
+    "usage": {
+      "prompt_tokens": 3155,
+      "completion_tokens": 105,
+      "total_tokens": 3260,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.008937500000000001,
+    "latency_s": 7.28,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1494172",
+    "evidence": "01_rId77_image74.png",
+    "found": true,
+    "bbox": [
+      368,
+      14,
+      630,
+      964
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible on the watch face as branding, with high clarity and completeness, and is the main subject of the image.",
+    "usage": {
+      "prompt_tokens": 1307,
+      "completion_tokens": 108,
+      "total_tokens": 1415,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.004347500000000001,
+    "latency_s": 6.78,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1494172",
+    "evidence": "02_rId78_image75.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      999,
+      999
+    ],
+    "confidence": 0.92,
+    "clarity": 0.8,
+    "completeness": 0.9,
+    "isolation": 0.7,
+    "composite_score": 0.7360000000000001,
+    "reason": "The registered trademark is clearly visible as branding on the watch face, with full outline and internal features present.",
+    "usage": {
+      "prompt_tokens": 1197,
+      "completion_tokens": 95,
+      "total_tokens": 1292,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003942500000000001,
+    "latency_s": 5.86,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1494172",
+    "evidence": "03_rId79_image76.png",
+    "found": true,
+    "bbox": [
+      244,
+      288,
+      544,
+      450
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as branding on the watch face, with full outline and internal features present.",
+    "usage": {
+      "prompt_tokens": 1225,
+      "completion_tokens": 102,
+      "total_tokens": 1327,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0040825,
+    "latency_s": 5.27,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "01_rId13_image10.png",
+    "found": true,
+    "bbox": [
+      147,
+      64,
+      874,
+      827
+    ],
+    "confidence": 0.85,
+    "clarity": 0.75,
+    "completeness": 0.95,
+    "isolation": 0.6,
+    "composite_score": 0.6545,
+    "reason": "The registered trademark is clearly visible as the central branding element on a poster, with high clarity and completeness, though surrounded by other logos.",
+    "usage": {
+      "prompt_tokens": 1412,
+      "completion_tokens": 107,
+      "total_tokens": 1519,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0046,
+    "latency_s": 5.48,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "02_rId14_image11.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      784,
+      991
+    ],
+    "confidence": 0.92,
+    "clarity": 0.8,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7544,
+    "reason": "The full NBA logo silhouette is clearly visible as branding on a product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1217,
+      "completion_tokens": 97,
+      "total_tokens": 1314,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0040125000000000004,
+    "latency_s": 5.35,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "03_rId15_image12.png",
+    "found": true,
+    "bbox": [
+      111,
+      69,
+      350,
+      147
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.75,
+    "composite_score": 0.7820000000000001,
+    "reason": "The registered NBA logo is clearly visible as branding on the letterhead, fully intact and unoccluded.",
+    "usage": {
+      "prompt_tokens": 7572,
+      "completion_tokens": 101,
+      "total_tokens": 7673,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.019940000000000003,
+    "latency_s": 10.11,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "04_rId16_image13.png",
+    "found": true,
+    "bbox": [
+      10,
+      10,
+      190,
+      990
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.8,
+    "composite_score": 0.8918000000000001,
+    "reason": "The registered NBA logo is clearly visible as branding on the product, with full outline, proportions, and internal features intact.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 101,
+      "total_tokens": 1285,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0039700000000000004,
+    "latency_s": 4.63,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "05_rId17_image14.png",
+    "found": true,
+    "bbox": [
+      143,
+      275,
+      190,
+      385
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered NBA logo is clearly visible as branding on the trading card, with full outline and identifying features present.",
+    "usage": {
+      "prompt_tokens": 2120,
+      "completion_tokens": 103,
+      "total_tokens": 2223,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0063300000000000006,
+    "latency_s": 7.3,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "06_rId18_image15.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      499,
+      999
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.8,
+    "composite_score": 0.8918000000000001,
+    "reason": "The full NBA logo is clearly visible as branding on the product, with high contrast and no occlusion.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 96,
+      "total_tokens": 1280,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003920000000000001,
+    "latency_s": 3.95,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "07_rId19_image16.png",
+    "found": true,
+    "bbox": [
+      143,
+      262,
+      190,
+      378
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7728,
+    "reason": "The registered NBA logo is clearly visible as branding on the trading card, fully intact and unoccluded.",
+    "usage": {
+      "prompt_tokens": 2120,
+      "completion_tokens": 100,
+      "total_tokens": 2220,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0063,
+    "latency_s": 6.7,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "08_rId20_image17.png",
+    "found": true,
+    "bbox": [
+      10,
+      10,
+      988,
+      988
+    ],
+    "confidence": 0.98,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.8231999999999999,
+    "reason": "The registered NBA logo is clearly visible as branding on the product, with full outline, proportions, and internal features intact.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 101,
+      "total_tokens": 1285,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0039700000000000004,
+    "latency_s": 7.05,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "09_rId21_image18.png",
+    "found": true,
+    "bbox": [
+      275,
+      450,
+      315,
+      500
+    ],
+    "confidence": 0.85,
+    "clarity": 0.7,
+    "completeness": 0.8,
+    "isolation": 0.6,
+    "composite_score": 0.5950000000000001,
+    "reason": "The registered trademark is clearly visible as a small logo on the jersey, fully intact and used as branding.",
+    "usage": {
+      "prompt_tokens": 1706,
+      "completion_tokens": 99,
+      "total_tokens": 1805,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.005255000000000001,
+    "latency_s": 6.21,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "10_rId22_image19.png",
+    "error": "BadRequestError: Error code: 400 - {'code': 20015, 'message': 'height(39) or width(23) must be larger than 28 for Qwen 3 VL models.', 'data': None}",
+    "latency_s": 0.61
+  },
+  {
+    "sample": "1969989",
+    "evidence": "11_rId23_image20.png",
+    "found": true,
+    "bbox": [
+      148,
+      267,
+      202,
+      385
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered NBA logo is clearly visible as branding on the trading card, with high clarity and completeness, and is the primary subject of the card's design.",
+    "usage": {
+      "prompt_tokens": 2120,
+      "completion_tokens": 112,
+      "total_tokens": 2232,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00642,
+    "latency_s": 6.98,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "12_rId24_image21.png",
+    "found": true,
+    "bbox": [
+      10,
+      10,
+      480,
+      980
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 0.98,
+    "isolation": 0.85,
+    "composite_score": 0.9035599999999999,
+    "reason": "The registered trademark is fully visible as branding on the product, with high clarity and completeness, and is the main subject of the image.",
+    "usage": {
+      "prompt_tokens": 1190,
+      "completion_tokens": 106,
+      "total_tokens": 1296,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.004035,
+    "latency_s": 5.18,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "13_rId25_image22.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.25,
+    "clarity": 0.3,
+    "completeness": 0.2,
+    "isolation": 0.1,
+    "composite_score": 0.045000000000000005,
+    "reason": "The image shows a product cover with multiple basketball players and text, but no clear instance of the registered trademark silhouette as a standalone branding element.",
+    "usage": {
+      "prompt_tokens": 4712,
+      "completion_tokens": 88,
+      "total_tokens": 4800,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.012660000000000001,
+    "latency_s": 8.03,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "14_rId26_image23.png",
+    "error": "BadRequestError: Error code: 400 - {'code': 20015, 'message': 'height(50) or width(23) must be larger than 28 for Qwen 3 VL models.', 'data': None}",
+    "latency_s": 0.55
+  },
+  {
+    "sample": "1969989",
+    "evidence": "15_rId27_image24.png",
+    "found": true,
+    "bbox": [
+      479,
+      154,
+      525,
+      228
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered NBA logo is clearly visible as branding on the top-left corner of the paper, with high clarity and completeness, and is the main subject of the image.",
+    "usage": {
+      "prompt_tokens": 1412,
+      "completion_tokens": 114,
+      "total_tokens": 1526,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0046700000000000005,
+    "latency_s": 4.72,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "16_rId28_image25.png",
+    "found": true,
+    "bbox": [
+      10,
+      10,
+      190,
+      190
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.8,
+    "composite_score": 0.8918000000000001,
+    "reason": "The registered NBA logo is clearly visible as branding on the product, with full outline, proportions, and internal features intact.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 101,
+      "total_tokens": 1285,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0039700000000000004,
+    "latency_s": 5.9,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "17_rId29_image26.png",
+    "found": true,
+    "bbox": [
+      365,
+      653,
+      526,
+      950
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark silhouette is clearly visible as branding on the padfolio cover, matching the logo in Image 1.",
+    "usage": {
+      "prompt_tokens": 4712,
+      "completion_tokens": 104,
+      "total_tokens": 4816,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.012820000000000002,
+    "latency_s": 7.62,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "18_rId30_image27.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      999,
+      999
+    ],
+    "confidence": 0.95,
+    "clarity": 0.8,
+    "completeness": 0.9,
+    "isolation": 0.7,
+    "composite_score": 0.76,
+    "reason": "The registered trademark is fully visible and clearly used as branding on the basketball surface.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 90,
+      "total_tokens": 1274,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0038600000000000006,
+    "latency_s": 4.88,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "19_rId31_image28.png",
+    "found": true,
+    "bbox": [
+      418,
+      26,
+      548,
+      902
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7728,
+    "reason": "The registered NBA logo is clearly visible as branding on the pen, with full outline and identifying features present.",
+    "usage": {
+      "prompt_tokens": 1412,
+      "completion_tokens": 99,
+      "total_tokens": 1511,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00452,
+    "latency_s": 5.19,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "01_rId5_image2.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.15,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.15,
+    "reason": "The registered trademark is not present in the product packaging; the visible logo is a stylized 'G' with a lightning bolt, not the silhouette of a person dribbling a basketball.",
+    "usage": {
+      "prompt_tokens": 1895,
+      "completion_tokens": 97,
+      "total_tokens": 1992,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.005707500000000001,
+    "latency_s": 3.6,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "02_rId6_image3.png",
+    "found": true,
+    "bbox": [
+      25,
+      25,
+      275,
+      875
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.8,
+    "composite_score": 0.8918000000000001,
+    "reason": "The registered NBA logo is clearly visible as branding on the product, with full outline, proportions, and internal features intact.",
+    "usage": {
+      "prompt_tokens": 1178,
+      "completion_tokens": 101,
+      "total_tokens": 1279,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003955,
+    "latency_s": 2.78,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "03_rId7_image4.png",
+    "found": true,
+    "bbox": [
+      100,
+      350,
+      350,
+      850
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as branding on the product packaging, with high clarity and completeness.",
+    "usage": {
+      "prompt_tokens": 1329,
+      "completion_tokens": 100,
+      "total_tokens": 1429,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0043225,
+    "latency_s": 5.02,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "04_rId8_image5.png",
+    "error": "BadRequestError: Error code: 400 - {'code': 20015, 'message': 'height(43) or width(27) must be larger than 28 for Qwen 3 VL models.', 'data': None}",
+    "latency_s": 0.64
+  },
+  {
+    "sample": "2423810",
+    "evidence": "05_rId9_image6.png",
+    "found": true,
+    "bbox": [
+      388,
+      288,
+      456,
+      400
+    ],
+    "confidence": 0.85,
+    "clarity": 0.7,
+    "completeness": 0.8,
+    "isolation": 0.6,
+    "composite_score": 0.5950000000000001,
+    "reason": "The registered trademark is clearly visible as branding on a product label, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1336,
+      "completion_tokens": 99,
+      "total_tokens": 1435,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0043300000000000005,
+    "latency_s": 4.41,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "06_rId10_image7.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.15,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.15,
+    "reason": "Image 2 is too blurry and indistinct to confirm any recognizable trademark features.",
+    "usage": {
+      "prompt_tokens": 1189,
+      "completion_tokens": 77,
+      "total_tokens": 1266,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0037425,
+    "latency_s": 2.6,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "07_rId11_image8.png",
+    "found": true,
+    "bbox": [
+      298,
+      314,
+      575,
+      700
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered NBA logo is clearly visible as branding on the chewing gum container, with high clarity, completeness, and isolation.",
+    "usage": {
+      "prompt_tokens": 1412,
+      "completion_tokens": 105,
+      "total_tokens": 1517,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.004580000000000001,
+    "latency_s": 7.19,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "01_rId68_image65.png",
+    "error": "APIConnectionError: Connection error.",
+    "latency_s": 0.92
+  },
+  {
+    "sample": "3089225",
+    "evidence": "02_rId69_image66.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.25,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.25,
+    "reason": "The object in Image 2 is a red, curved product with no clear trademark; the white shape resembles the logo but is not identifiable as the registered mark due to poor clarity, lack of detail, and no visible branding context.",
+    "usage": {
+      "prompt_tokens": 1310,
+      "completion_tokens": 106,
+      "total_tokens": 1416,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.004335,
+    "latency_s": 4.14,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "03_rId70_image67.png",
+    "found": true,
+    "bbox": [
+      68,
+      199,
+      160,
+      241
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.8,
+    "composite_score": 0.8096000000000001,
+    "reason": "The registered trademark '180s' is clearly visible as branding on the webpage header, matching the logo's outline and proportions.",
+    "usage": {
+      "prompt_tokens": 5330,
+      "completion_tokens": 105,
+      "total_tokens": 5435,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.014375000000000002,
+    "latency_s": 6.73,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "04_rId71_image68.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.15,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.15,
+    "reason": "No registered trademark visible in the product photograph.",
+    "usage": {
+      "prompt_tokens": 1281,
+      "completion_tokens": 69,
+      "total_tokens": 1350,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0038925,
+    "latency_s": 5.46,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "05_rId72_image69.png",
+    "found": true,
+    "bbox": [
+      90,
+      188,
+      178,
+      228
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 1.0,
+    "isolation": 0.8,
+    "composite_score": 0.8280000000000002,
+    "reason": "The registered trademark '180s' is clearly visible as branding in the top-left of the webpage, matching the logo's shape and style.",
+    "usage": {
+      "prompt_tokens": 5330,
+      "completion_tokens": 107,
+      "total_tokens": 5437,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.014395000000000002,
+    "latency_s": 7.27,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "06_rId73_image70.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.25,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.25,
+    "reason": "No visible trademark; the object in Image 2 is a generic product with no identifiable logo.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 79,
+      "total_tokens": 1263,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0037500000000000003,
+    "latency_s": 4.23,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "07_rId74_image71.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.15,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.15,
+    "reason": "The logo in Image 1 is a line-art shape, but the '180s' logo in Image 2 is a distinct brand name with text and a different design, not a match.",
+    "usage": {
+      "prompt_tokens": 5330,
+      "completion_tokens": 101,
+      "total_tokens": 5431,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.014335000000000002,
+    "latency_s": 8.67,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4334451",
+    "evidence": "01_rId54_image51.png",
+    "found": true,
+    "bbox": [
+      362,
+      350,
+      682,
+      731
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.75,
+    "composite_score": 0.7820000000000001,
+    "reason": "The registered trademark is clearly visible as a whole on a product badge with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1338,
+      "completion_tokens": 102,
+      "total_tokens": 1440,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.004365000000000001,
+    "latency_s": 4.13,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4334451",
+    "evidence": "02_rId55_image52.png",
+    "found": true,
+    "bbox": [
+      0,
+      72,
+      984,
+      948
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as a whole on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1182,
+      "completion_tokens": 99,
+      "total_tokens": 1281,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003945000000000001,
+    "latency_s": 6.36,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4334451",
+    "evidence": "03_rId56_image53.png",
+    "error": "APIConnectionError: Connection error.",
+    "latency_s": 0.85
+  },
+  {
+    "sample": "4334451",
+    "evidence": "04_rId57_image54.png",
+    "found": true,
+    "bbox": [
+      38,
+      38,
+      958,
+      958
+    ],
+    "confidence": 0.95,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.8,
+    "composite_score": 0.8360000000000001,
+    "reason": "The registered trademark is clearly visible as a whole on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1180,
+      "completion_tokens": 98,
+      "total_tokens": 1278,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00393,
+    "latency_s": 6.99,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4334451",
+    "evidence": "05_rId58_image55.png",
+    "found": true,
+    "bbox": [
+      288,
+      258,
+      553,
+      588
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.8,
+    "composite_score": 0.8096000000000001,
+    "reason": "The registered trademark is clearly visible as a whole on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 2700,
+      "completion_tokens": 100,
+      "total_tokens": 2800,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.007750000000000001,
+    "latency_s": 5.42,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4338293",
+    "evidence": "01_rId34_image31.png",
+    "found": true,
+    "bbox": [
+      202,
+      455,
+      310,
+      605
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as branding on the wheel center caps, with high clarity and completeness, and is the main subject of the product image.",
+    "usage": {
+      "prompt_tokens": 2702,
+      "completion_tokens": 111,
+      "total_tokens": 2813,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.007865,
+    "latency_s": 6.31,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4338293",
+    "evidence": "02_rId35_image32.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      999,
+      999
+    ],
+    "confidence": 0.85,
+    "clarity": 0.7,
+    "completeness": 0.9,
+    "isolation": 0.8,
+    "composite_score": 0.6970000000000002,
+    "reason": "The registered trademark is clearly visible as branding on the product, with high fidelity to the original logo shape and no significant occlusion.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 100,
+      "total_tokens": 1284,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00396,
+    "latency_s": 6.8,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4338293",
+    "evidence": "03_rId36_image33.png",
+    "found": true,
+    "bbox": [
+      348,
+      488,
+      448,
+      588
+    ],
+    "confidence": 0.85,
+    "clarity": 0.8,
+    "completeness": 0.9,
+    "isolation": 0.6,
+    "composite_score": 0.6460000000000001,
+    "reason": "The registered trademark is clearly visible as branding on a product in the product listing.",
+    "usage": {
+      "prompt_tokens": 1772,
+      "completion_tokens": 94,
+      "total_tokens": 1866,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.005370000000000001,
+    "latency_s": 5.21,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4338293",
+    "evidence": "04_rId37_image34.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      99,
+      99
+    ],
+    "confidence": 0.92,
+    "clarity": 0.8,
+    "completeness": 0.9,
+    "isolation": 0.7,
+    "composite_score": 0.7360000000000001,
+    "reason": "The registered trademark is clearly visible as a whole on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 93,
+      "total_tokens": 1277,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0038900000000000002,
+    "latency_s": 3.28,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4338293",
+    "evidence": "05_rId38_image35.png",
+    "found": true,
+    "bbox": [
+      10,
+      10,
+      98,
+      98
+    ],
+    "confidence": 0.85,
+    "clarity": 0.7,
+    "completeness": 0.9,
+    "isolation": 0.7,
+    "composite_score": 0.663,
+    "reason": "The registered trademark is clearly visible as branding on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1184,
+      "completion_tokens": 94,
+      "total_tokens": 1278,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0039000000000000007,
+    "latency_s": 6.88,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4338293",
+    "evidence": "06_rId39_image36.png",
+    "found": true,
+    "bbox": [
+      31,
+      515,
+      188,
+      725
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered Firebird logo is clearly visible as branding on the wheel cap product, matching the outline and internal features of the registered trademark.",
+    "usage": {
+      "prompt_tokens": 1825,
+      "completion_tokens": 107,
+      "total_tokens": 1932,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0056325,
+    "latency_s": 6.83,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4601531",
+    "evidence": "01_rId61_image58.png",
+    "found": true,
+    "bbox": [
+      348,
+      275,
+      618,
+      555
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as the product's branding on a lapel pin, with high clarity and completeness, and is the main subject of the product image.",
+    "usage": {
+      "prompt_tokens": 1780,
+      "completion_tokens": 114,
+      "total_tokens": 1894,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00559,
+    "latency_s": 6.98,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4601531",
+    "evidence": "02_rId62_image59.png",
+    "found": true,
+    "bbox": [
+      10,
+      50,
+      980,
+      930
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.8,
+    "composite_score": 0.8096000000000001,
+    "reason": "The registered trademark is clearly visible as a whole on the product, with high contrast and minimal occlusion.",
+    "usage": {
+      "prompt_tokens": 1185,
+      "completion_tokens": 98,
+      "total_tokens": 1283,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003942500000000001,
+    "latency_s": 5.77,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4601531",
+    "evidence": "03_rId63_image60.png",
+    "found": true,
+    "bbox": [
+      370,
+      338,
+      570,
+      475
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as the product's branding on the lapel pin, with high clarity and completeness, and is the main subject of the image.",
+    "usage": {
+      "prompt_tokens": 1630,
+      "completion_tokens": 113,
+      "total_tokens": 1743,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.005205,
+    "latency_s": 4.01,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4601531",
+    "evidence": "04_rId64_image61.png",
+    "found": true,
+    "bbox": [
+      10,
+      70,
+      980,
+      920
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as branding on a metallic product, with full outline and internal features intact.",
+    "usage": {
+      "prompt_tokens": 1198,
+      "completion_tokens": 100,
+      "total_tokens": 1298,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.003995,
+    "latency_s": 5.01,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4601531",
+    "evidence": "05_rId65_image62.png",
+    "found": true,
+    "bbox": [
+      208,
+      494,
+      423,
+      630
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.8,
+    "composite_score": 0.8096000000000001,
+    "reason": "The registered trademark is clearly visible as the product's branding on a chrome lapel pin, with high clarity and completeness.",
+    "usage": {
+      "prompt_tokens": 2710,
+      "completion_tokens": 103,
+      "total_tokens": 2813,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.007805000000000001,
+    "latency_s": 5.62,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "01_rId42_image39.png",
+    "found": true,
+    "bbox": [
+      204,
+      43,
+      257,
+      87
+    ],
+    "confidence": 0.92,
+    "clarity": 0.9,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7728,
+    "reason": "The registered Cadillac logo is clearly visible as branding on the product image.",
+    "usage": {
+      "prompt_tokens": 2000,
+      "completion_tokens": 91,
+      "total_tokens": 2091,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00591,
+    "latency_s": 3.75,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "02_rId43_image40.png",
+    "found": true,
+    "bbox": [
+      30,
+      100,
+      970,
+      800
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as branding on the product, with high clarity and completeness, and is the main subject of the image.",
+    "usage": {
+      "prompt_tokens": 1186,
+      "completion_tokens": 107,
+      "total_tokens": 1293,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.004035,
+    "latency_s": 4.95,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "03_rId44_image41.png",
+    "found": true,
+    "bbox": [
+      97,
+      177,
+      138,
+      208
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered Cadillac logo is clearly visible as branding on the product page, fully intact and prominently displayed.",
+    "usage": {
+      "prompt_tokens": 2710,
+      "completion_tokens": 100,
+      "total_tokens": 2810,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.007775000000000001,
+    "latency_s": 6.45,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "04_rId45_image42.png",
+    "found": true,
+    "bbox": [
+      10,
+      10,
+      988,
+      988
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered Cadillac logo is clearly visible as branding on the vehicle's grille, with full outline and internal features intact.",
+    "usage": {
+      "prompt_tokens": 1197,
+      "completion_tokens": 102,
+      "total_tokens": 1299,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0040125000000000004,
+    "latency_s": 4.35,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "05_rId46_image43.png",
+    "found": true,
+    "bbox": [
+      402,
+      468,
+      448,
+      498
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered Cadillac logo is clearly visible as a laser-engraved brand on the pen, matching the registered design in outline and internal features.",
+    "usage": {
+      "prompt_tokens": 2316,
+      "completion_tokens": 109,
+      "total_tokens": 2425,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.006880000000000001,
+    "latency_s": 7.15,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "06_rId47_image44.png",
+    "found": true,
+    "bbox": [
+      100,
+      300,
+      900,
+      700
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as branding on the product with high clarity and completeness.",
+    "usage": {
+      "prompt_tokens": 1197,
+      "completion_tokens": 98,
+      "total_tokens": 1295,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.0039725,
+    "latency_s": 4.09,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "4827580",
+    "evidence": "07_rId48_image45.png",
+    "found": true,
+    "bbox": [
+      575,
+      317,
+      745,
+      388
+    ],
+    "confidence": 0.92,
+    "clarity": 0.85,
+    "completeness": 0.95,
+    "isolation": 0.7,
+    "composite_score": 0.7636,
+    "reason": "The registered trademark is clearly visible as embossed branding on the black wallet, with high clarity and completeness, and is the primary focus of the product.",
+    "usage": {
+      "prompt_tokens": 2320,
+      "completion_tokens": 111,
+      "total_tokens": 2431,
+      "reasoning_tokens": 0
+    },
+    "cost": 0.00691,
+    "latency_s": 5.5,
+    "json_retry_count": 0
+  },
+  {
+    "sample": "6433801",
+    "evidence": "01_rId51_image48.png",
+    "error": "APIConnectionError: Connection error.",
+    "latency_s": 1.22
+  }
+]

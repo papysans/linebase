@@ -1,0 +1,377 @@
+{
+  "1044246": {
+    "all": [
+      {
+        "file": "03_rId84_image81.png",
+        "red_ratio": 0.00023,
+        "border_red_ratio": 0.00038
+      },
+      {
+        "file": "01_rId82_image79.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "02_rId83_image80.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "03_rId84_image81.png",
+    "best_guess_border_ratio": 0.00038
+  },
+  "1494172": {
+    "all": [
+      {
+        "file": "01_rId77_image74.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "02_rId78_image75.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "03_rId79_image76.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "01_rId77_image74.png",
+    "best_guess_border_ratio": 0.0
+  },
+  "1969989": {
+    "all": [
+      {
+        "file": "12_rId24_image21.png",
+        "red_ratio": 0.10418,
+        "border_red_ratio": 0.0398
+      },
+      {
+        "file": "06_rId18_image15.png",
+        "red_ratio": 0.08433,
+        "border_red_ratio": 0.03777
+      },
+      {
+        "file": "05_rId17_image14.png",
+        "red_ratio": 0.07735,
+        "border_red_ratio": 0.02801
+      },
+      {
+        "file": "08_rId20_image17.png",
+        "red_ratio": 0.09187,
+        "border_red_ratio": 0.02317
+      },
+      {
+        "file": "04_rId16_image13.png",
+        "red_ratio": 0.04396,
+        "border_red_ratio": 0.00255
+      },
+      {
+        "file": "11_rId23_image20.png",
+        "red_ratio": 0.00768,
+        "border_red_ratio": 0.00086
+      },
+      {
+        "file": "03_rId15_image12.png",
+        "red_ratio": 0.00013,
+        "border_red_ratio": 0.00019
+      },
+      {
+        "file": "13_rId25_image22.png",
+        "red_ratio": 7e-05,
+        "border_red_ratio": 0.00018
+      },
+      {
+        "file": "17_rId29_image26.png",
+        "red_ratio": 0.00169,
+        "border_red_ratio": 0.00017
+      },
+      {
+        "file": "09_rId21_image18.png",
+        "red_ratio": 0.0013,
+        "border_red_ratio": 3e-05
+      },
+      {
+        "file": "07_rId19_image16.png",
+        "red_ratio": 0.00543,
+        "border_red_ratio": 1e-05
+      },
+      {
+        "file": "01_rId13_image10.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "02_rId14_image11.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "10_rId22_image19.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "14_rId26_image23.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "15_rId27_image24.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "16_rId28_image25.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "18_rId30_image27.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "19_rId31_image28.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "12_rId24_image21.png",
+    "best_guess_border_ratio": 0.0398
+  },
+  "2423810": {
+    "all": [
+      {
+        "file": "02_rId6_image3.png",
+        "red_ratio": 0.4742,
+        "border_red_ratio": 0.76953
+      },
+      {
+        "file": "01_rId5_image2.png",
+        "red_ratio": 0.44887,
+        "border_red_ratio": 0.53943
+      },
+      {
+        "file": "03_rId7_image4.png",
+        "red_ratio": 0.01595,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "04_rId8_image5.png",
+        "red_ratio": 0.01378,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "05_rId9_image6.png",
+        "red_ratio": 0.00314,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "06_rId10_image7.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "07_rId11_image8.png",
+        "red_ratio": 0.01084,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "02_rId6_image3.png",
+    "best_guess_border_ratio": 0.76953
+  },
+  "3089225": {
+    "all": [
+      {
+        "file": "03_rId70_image67.png",
+        "red_ratio": 0.00013,
+        "border_red_ratio": 0.00033
+      },
+      {
+        "file": "05_rId72_image69.png",
+        "red_ratio": 0.00012,
+        "border_red_ratio": 0.00033
+      },
+      {
+        "file": "02_rId69_image66.png",
+        "red_ratio": 0.02127,
+        "border_red_ratio": 0.00028
+      },
+      {
+        "file": "01_rId68_image65.png",
+        "red_ratio": 0.0008,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "04_rId71_image68.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "06_rId73_image70.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "07_rId74_image71.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "03_rId70_image67.png",
+    "best_guess_border_ratio": 0.00033
+  },
+  "4334451": {
+    "all": [
+      {
+        "file": "03_rId56_image53.png",
+        "red_ratio": 0.03035,
+        "border_red_ratio": 0.01549
+      },
+      {
+        "file": "05_rId58_image55.png",
+        "red_ratio": 0.00197,
+        "border_red_ratio": 9e-05
+      },
+      {
+        "file": "01_rId54_image51.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "02_rId55_image52.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "04_rId57_image54.png",
+        "red_ratio": 0.0075,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "03_rId56_image53.png",
+    "best_guess_border_ratio": 0.01549
+  },
+  "4338293": {
+    "all": [
+      {
+        "file": "06_rId39_image36.png",
+        "red_ratio": 0.0262,
+        "border_red_ratio": 0.0147
+      },
+      {
+        "file": "01_rId34_image31.png",
+        "red_ratio": 4e-05,
+        "border_red_ratio": 0.00011
+      },
+      {
+        "file": "03_rId36_image33.png",
+        "red_ratio": 0.00052,
+        "border_red_ratio": 1e-05
+      },
+      {
+        "file": "02_rId35_image32.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "04_rId37_image34.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "05_rId38_image35.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "06_rId39_image36.png",
+    "best_guess_border_ratio": 0.0147
+  },
+  "4601531": {
+    "all": [
+      {
+        "file": "05_rId65_image62.png",
+        "red_ratio": 0.03861,
+        "border_red_ratio": 0.01652
+      },
+      {
+        "file": "03_rId63_image60.png",
+        "red_ratio": 0.00019,
+        "border_red_ratio": 1e-05
+      },
+      {
+        "file": "01_rId61_image58.png",
+        "red_ratio": 0.00034,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "02_rId62_image59.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "04_rId64_image61.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "05_rId65_image62.png",
+    "best_guess_border_ratio": 0.01652
+  },
+  "4827580": {
+    "all": [
+      {
+        "file": "07_rId48_image45.png",
+        "red_ratio": 0.02715,
+        "border_red_ratio": 0.053
+      },
+      {
+        "file": "03_rId44_image41.png",
+        "red_ratio": 4e-05,
+        "border_red_ratio": 0.00011
+      },
+      {
+        "file": "05_rId46_image43.png",
+        "red_ratio": 2e-05,
+        "border_red_ratio": 4e-05
+      },
+      {
+        "file": "01_rId42_image39.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "02_rId43_image40.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "04_rId45_image42.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      },
+      {
+        "file": "06_rId47_image44.png",
+        "red_ratio": 0.0,
+        "border_red_ratio": 0.0
+      }
+    ],
+    "best_guess": "07_rId48_image45.png",
+    "best_guess_border_ratio": 0.053
+  },
+  "6433801": {
+    "all": [
+      {
+        "file": "01_rId51_image48.png",
+        "red_ratio": 0.08096,
+        "border_red_ratio": 0.22256
+      }
+    ],
+    "best_guess": "01_rId51_image48.png",
+    "best_guess_border_ratio": 0.22256
+  }
+}

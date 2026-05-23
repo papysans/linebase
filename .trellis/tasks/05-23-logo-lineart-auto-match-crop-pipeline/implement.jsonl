@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/05-23-logo-lineart-auto-match-crop-pipeline/prd.md", "reason": "Source of truth: goals, decisions, acceptance criteria, module layout, prompt v0"}
+{"file": ".trellis/tasks/05-23-logo-lineart-auto-match-crop-pipeline/fixtures/_manifest.json", "reason": "10-sample evaluation fixture structure extracted from 期望检测效果.docx — implementers need this to wire up eval harness"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Project-wide guide on when to extract shared code vs inline — applies to cache/llm/eval modules"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Guide on data flow across layers — pipeline crosses io → fetch → llm → crop → io_excel"}

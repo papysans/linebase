@@ -1,0 +1,130 @@
+{
+  "run_id": "run_007_v2",
+  "prompt_version": "2",
+  "model": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+  "samples": 10,
+  "matched": 9,
+  "mean_ssim": 0.315627606593195,
+  "mean_phash": 29.4,
+  "pass_rate_ssim_50": 0.2,
+  "cost_usd_estimate": 0.3439750000000001,
+  "pairs": [
+    {
+      "sample": "1044246",
+      "candidate": "01_rId82_image79.png",
+      "expected": "04_rId85_image82.png",
+      "phash_distance": 24,
+      "ssim": 0.17990813005949394,
+      "notes": "conf=0.92 comp=0.95 iso=0.75 clar=0.85 bbox=(58, 163, 818, 632)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1494172",
+      "candidate": "01_rId77_image74.png",
+      "expected": "04_rId80_image77.png",
+      "phash_distance": 24,
+      "ssim": 0.40070245384069964,
+      "notes": "conf=0.92 comp=0.95 iso=0.70 clar=0.85 bbox=(368, 14, 630, 964)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1969989",
+      "candidate": "12_rId24_image21.png",
+      "expected": "20_rId32_image29.png",
+      "phash_distance": 24,
+      "ssim": 0.19954283640945494,
+      "notes": "conf=0.98 comp=0.98 iso=0.85 clar=0.95 bbox=(10, 10, 480, 980)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0026315500926524927,
+      "selection_correct": true
+    },
+    {
+      "sample": "2423810",
+      "candidate": "02_rId6_image3.png",
+      "expected": "08_rId12_image9.png",
+      "phash_distance": 36,
+      "ssim": 0.2871267496211379,
+      "notes": "conf=0.98 comp=1.00 iso=0.80 clar=0.95 bbox=(25, 25, 275, 875)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.002052238805970149,
+      "selection_correct": true
+    },
+    {
+      "sample": "3089225",
+      "candidate": "05_rId72_image69.png",
+      "expected": "08_rId75_image72.png",
+      "phash_distance": 36,
+      "ssim": 0.33125560178653246,
+      "notes": "conf=0.92 comp=1.00 iso=0.80 clar=0.90 bbox=(90, 188, 178, 228)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "4334451",
+      "candidate": "04_rId57_image54.png",
+      "expected": "06_rId59_image56.png",
+      "phash_distance": 12,
+      "ssim": 0.40025344187959044,
+      "notes": "conf=0.95 comp=0.95 iso=0.80 clar=0.90 bbox=(38, 38, 958, 958)  SEL_WRONG gold=03_rId56_image53.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4338293",
+      "candidate": "01_rId34_image31.png",
+      "expected": "07_rId40_image37.png",
+      "phash_distance": 34,
+      "ssim": 0.13961308926326724,
+      "notes": "conf=0.92 comp=0.95 iso=0.70 clar=0.85 bbox=(202, 455, 310, 605)  SEL_WRONG gold=06_rId39_image36.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4601531",
+      "candidate": "02_rId62_image59.png",
+      "expected": "06_rId66_image63.png",
+      "phash_distance": 10,
+      "ssim": 0.6581749053313594,
+      "notes": "conf=0.92 comp=0.95 iso=0.80 clar=0.90 bbox=(10, 50, 980, 930)  SEL_WRONG gold=05_rId65_image62.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4827580",
+      "candidate": "01_rId42_image39.png",
+      "expected": "08_rId49_image46.png",
+      "phash_distance": 30,
+      "ssim": 0.5596988577404141,
+      "notes": "conf=0.92 comp=0.95 iso=0.70 clar=0.90 bbox=(204, 43, 257, 87)  SEL_WRONG gold=07_rId48_image45.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "6433801",
+      "candidate": "(none)",
+      "expected": "02_rId52_image49.png",
+      "phash_distance": 64,
+      "ssim": 0.0,
+      "notes": "no LLM match",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    }
+  ],
+  "selection_accuracy": 0.2857142857142857,
+  "selection_evaluated": 7,
+  "correct_selection": 2,
+  "bbox_iou_mean": 0.002341894449311321,
+  "bbox_iou_pass_50": 0.0,
+  "bbox_iou_scored": 2,
+  "json_retry_count": 0,
+  "completion_tokens_total": 5713,
+  "reasoning_tokens_total": 0,
+  "mean_completion_tokens": 100.2280701754386,
+  "mean_reasoning_tokens": 0.0,
+  "mean_latency_s": 5.732391482905338,
+  "call_count": 57,
+  "failed_count": 6,
+  "aborted": false,
+  "abort_reason": null,
+  "verify_enabled": false
+}

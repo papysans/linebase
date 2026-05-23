@@ -1,0 +1,96 @@
+{
+  "run_id": "run_002_v1",
+  "prompt_version": "1",
+  "model": "gpt-5.4",
+  "samples": 10,
+  "matched": 10,
+  "mean_ssim": 0.3519826148192342,
+  "mean_phash": 32.4,
+  "pass_rate_ssim_50": 0.2,
+  "cost_usd_estimate": 0.26980000000000004,
+  "pairs": [
+    {
+      "sample": "1044246",
+      "candidate": "01_rId82_image79.png",
+      "expected": "04_rId85_image82.png",
+      "phash_distance": 32,
+      "ssim": 0.13470100610834365,
+      "notes": "conf=0.99 bbox=(234, 653, 861, 909)  no_gold"
+    },
+    {
+      "sample": "1494172",
+      "candidate": "03_rId79_image76.png",
+      "expected": "04_rId80_image77.png",
+      "phash_distance": 42,
+      "ssim": 0.21316870173916372,
+      "notes": "conf=0.98 bbox=(126, 155, 192, 183)  no_gold"
+    },
+    {
+      "sample": "1969989",
+      "candidate": "01_rId13_image10.png",
+      "expected": "20_rId32_image29.png",
+      "phash_distance": 32,
+      "ssim": 0.19365965227076076,
+      "notes": "conf=0.99 bbox=(122, 46, 347, 427)  SEL_WRONG gold=12_rId24_image21.png"
+    },
+    {
+      "sample": "2423810",
+      "candidate": "01_rId5_image2.png",
+      "expected": "08_rId12_image9.png",
+      "phash_distance": 30,
+      "ssim": 0.28586541809936844,
+      "notes": "conf=0.99 bbox=(159, 241, 449, 504)  SEL_WRONG gold=02_rId6_image3.png"
+    },
+    {
+      "sample": "3089225",
+      "candidate": "04_rId71_image68.png",
+      "expected": "08_rId75_image72.png",
+      "phash_distance": 34,
+      "ssim": 0.36920217063719424,
+      "notes": "conf=0.95 bbox=(40, 39, 388, 286)  no_gold"
+    },
+    {
+      "sample": "4334451",
+      "candidate": "05_rId58_image55.png",
+      "expected": "06_rId59_image56.png",
+      "phash_distance": 20,
+      "ssim": 0.3795077118882431,
+      "notes": "conf=0.99 bbox=(507, 246, 976, 558)  SEL_WRONG gold=03_rId56_image53.png"
+    },
+    {
+      "sample": "4338293",
+      "candidate": "06_rId39_image36.png",
+      "expected": "07_rId40_image37.png",
+      "phash_distance": 38,
+      "ssim": 0.17612790533027223,
+      "notes": "conf=0.99 bbox=(34, 386, 226, 584)  SEL_OK"
+    },
+    {
+      "sample": "4601531",
+      "candidate": "03_rId63_image60.png",
+      "expected": "06_rId66_image63.png",
+      "phash_distance": 28,
+      "ssim": 0.6397951532813954,
+      "notes": "conf=0.99 bbox=(339, 166, 532, 280)  SEL_WRONG gold=05_rId65_image62.png"
+    },
+    {
+      "sample": "4827580",
+      "candidate": "02_rId43_image40.png",
+      "expected": "08_rId49_image46.png",
+      "phash_distance": 34,
+      "ssim": 0.3734359766880051,
+      "notes": "conf=0.98 bbox=(0, 0, 51, 20)  SEL_WRONG gold=07_rId48_image45.png"
+    },
+    {
+      "sample": "6433801",
+      "candidate": "01_rId51_image48.png",
+      "expected": "02_rId52_image49.png",
+      "phash_distance": 34,
+      "ssim": 0.7543624521495953,
+      "notes": "conf=0.97 bbox=(377, 655, 484, 785)  SEL_OK"
+    }
+  ],
+  "selection_accuracy": 0.2857142857142857,
+  "selection_evaluated": 7,
+  "correct_selection": 2
+}

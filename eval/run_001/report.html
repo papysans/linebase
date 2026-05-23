@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>linebase eval run_001</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 20px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+  tr.bad { background: #fee; }
+  tr.ok { background: #efe; }
+  .summary { background: #f5f5f5; padding: 12px; margin-bottom: 12px; }
+</style>
+<h1>linebase eval — run_001</h1>
+<div class="summary">
+  prompt=conf=0.99 model=gpt-5.4 samples=10 matched=10<br>
+  mean_ssim=0.328 mean_phash=30.6 pass_rate@SSIM≥0.5=20%<br>
+  est_cost=$0.216
+</div>
+<table>
+  <tr><th>sample</th><th>mine</th><th>expected</th><th>pHash</th><th>SSIM</th><th>notes</th></tr>
+  <tr class='bad'><td>1044246</td><td><img src='./crops/1044246__mine.png' style='max-height:160px'></td><td><img src='./crops/1044246__expected.png' style='max-height:160px'></td><td>32</td><td>0.160</td><td>conf=0.99 bbox=(168, 651, 892, 1018)</td></tr><tr class='bad'><td>1494172</td><td><img src='./crops/1494172__mine.png' style='max-height:160px'></td><td><img src='./crops/1494172__expected.png' style='max-height:160px'></td><td>24</td><td>0.124</td><td>conf=0.98 bbox=(264, 114, 353, 207)</td></tr><tr class='bad'><td>1969989</td><td><img src='./crops/1969989__mine.png' style='max-height:160px'></td><td><img src='./crops/1969989__expected.png' style='max-height:160px'></td><td>30</td><td>0.185</td><td>conf=0.99 bbox=(98, 42, 362, 437)</td></tr><tr class='bad'><td>2423810</td><td><img src='./crops/2423810__mine.png' style='max-height:160px'></td><td><img src='./crops/2423810__expected.png' style='max-height:160px'></td><td>32</td><td>0.260</td><td>conf=0.99 bbox=(246, 311, 418, 505)</td></tr><tr class='bad'><td>3089225</td><td><img src='./crops/3089225__mine.png' style='max-height:160px'></td><td><img src='./crops/3089225__expected.png' style='max-height:160px'></td><td>30</td><td>0.373</td><td>conf=0.98 bbox=(126, 341, 262, 406)</td></tr><tr class='bad'><td>4334451</td><td><img src='./crops/4334451__mine.png' style='max-height:160px'></td><td><img src='./crops/4334451__expected.png' style='max-height:160px'></td><td>32</td><td>0.223</td><td>conf=0.98 bbox=(232, 141, 385, 286)</td></tr><tr class='bad'><td>4338293</td><td><img src='./crops/4338293__mine.png' style='max-height:160px'></td><td><img src='./crops/4338293__expected.png' style='max-height:160px'></td><td>36</td><td>0.214</td><td>conf=0.99 bbox=(33, 384, 227, 579)</td></tr><tr class='ok'><td>4601531</td><td><img src='./crops/4601531__mine.png' style='max-height:160px'></td><td><img src='./crops/4601531__expected.png' style='max-height:160px'></td><td>28</td><td>0.682</td><td>conf=0.98 bbox=(341, 171, 483, 246)</td></tr><tr class='bad'><td>4827580</td><td><img src='./crops/4827580__mine.png' style='max-height:160px'></td><td><img src='./crops/4827580__expected.png' style='max-height:160px'></td><td>32</td><td>0.290</td><td>conf=0.98 bbox=(276, 164, 425, 250)</td></tr><tr class='ok'><td>6433801</td><td><img src='./crops/6433801__mine.png' style='max-height:160px'></td><td><img src='./crops/6433801__expected.png' style='max-height:160px'></td><td>30</td><td>0.769</td><td>conf=0.94 bbox=(362, 647, 490, 772)</td></tr>
+</table>

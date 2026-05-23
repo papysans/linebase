@@ -1,0 +1,2164 @@
+[
+  {
+    "sample": "1044246",
+    "evidence": "01_rId82_image79.png",
+    "found": true,
+    "bbox": [
+      239,
+      520,
+      912,
+      970
+    ],
+    "confidence": 0.98,
+    "clarity": 0.93,
+    "completeness": 0.98,
+    "isolation": 0.78,
+    "composite_score": 0.8722000000000001,
+    "reason": "The Levi's two-horse trademark is clearly printed on the product tag.",
+    "usage": {
+      "prompt_tokens": 3627,
+      "completion_tokens": 71,
+      "total_tokens": 3698
+    },
+    "cost": 0.009777500000000001,
+    "latency_s": 10.89,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        227,
+        649,
+        840,
+        922
+      ],
+      "verify_confidence": 0.98,
+      "verify_reason": "The full Levi Strauss two-horse trademark is clearly present, with substantial surrounding label text and background.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0048575
+  },
+  {
+    "sample": "1044246",
+    "evidence": "02_rId83_image80.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      280,
+      159
+    ],
+    "confidence": 0.97,
+    "clarity": 0.78,
+    "completeness": 0.92,
+    "isolation": 0.68,
+    "composite_score": 0.7721200000000001,
+    "reason": "The photo shows the full trademark logo as the main printed branding on the product.",
+    "usage": {
+      "prompt_tokens": 1161,
+      "completion_tokens": 72,
+      "total_tokens": 1233
+    },
+    "cost": 0.0036225000000000003,
+    "latency_s": 8.32,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.98,
+      "verify_reason": "The crop shows only the central portion of the registered logo and cuts off the full design at both left and right edges.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032250000000000004
+  },
+  {
+    "sample": "1044246",
+    "evidence": "03_rId84_image81.png",
+    "found": true,
+    "bbox": [
+      377,
+      483,
+      528,
+      676
+    ],
+    "confidence": 0.84,
+    "clarity": 0.55,
+    "completeness": 0.72,
+    "isolation": 0.62,
+    "composite_score": 0.54264,
+    "reason": "The Levi's batwing logo is printed on the boot and is clearly visible, though slightly faded.",
+    "usage": {
+      "prompt_tokens": 3501,
+      "completion_tokens": 70,
+      "total_tokens": 3571
+    },
+    "cost": 0.009452499999999999,
+    "latency_s": 9.96,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.96,
+      "verify_reason": "The crop shows a stamped image on leather, but it does not match the full registered line-art logo from Image 1.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032850000000000006
+  },
+  {
+    "sample": "1494172",
+    "evidence": "01_rId77_image74.png",
+    "found": true,
+    "bbox": [
+      251,
+      67,
+      362,
+      227
+    ],
+    "confidence": 0.97,
+    "clarity": 0.93,
+    "completeness": 1.0,
+    "isolation": 0.84,
+    "composite_score": 0.89434,
+    "reason": "The Chevrolet bowtie-in-circle logo is clearly printed on the watch face and fully visible.",
+    "usage": {
+      "prompt_tokens": 1325,
+      "completion_tokens": 68,
+      "total_tokens": 1393
+    },
+    "cost": 0.0039925,
+    "latency_s": 6.9,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        250,
+        76,
+        352,
+        177
+      ],
+      "verify_confidence": 0.97,
+      "verify_reason": "The Corvette checkerboard-and-cross emblem is fully visible on the watch dial, with extra surrounding dial space in the crop.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032575
+  },
+  {
+    "sample": "1494172",
+    "evidence": "02_rId78_image75.png",
+    "found": true,
+    "bbox": [
+      15,
+      17,
+      145,
+      76
+    ],
+    "confidence": 0.92,
+    "clarity": 0.78,
+    "completeness": 0.95,
+    "isolation": 0.71,
+    "composite_score": 0.7544,
+    "reason": "The photo shows the same oval-and-checkerboard emblem as branding, clearly matching the registered logo.",
+    "usage": {
+      "prompt_tokens": 1082,
+      "completion_tokens": 70,
+      "total_tokens": 1152
+    },
+    "cost": 0.0034050000000000005,
+    "latency_s": 8.08,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        11,
+        15,
+        72,
+        44
+      ],
+      "verify_confidence": 0.86,
+      "verify_reason": "The full Chevrolet bowtie-over-circle logo is present, but the crop includes noticeable surrounding coin background.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031300000000000004
+  },
+  {
+    "sample": "1494172",
+    "evidence": "03_rId79_image76.png",
+    "found": true,
+    "bbox": [
+      110,
+      148,
+      183,
+      199
+    ],
+    "confidence": 0.98,
+    "clarity": 0.92,
+    "completeness": 0.97,
+    "isolation": 0.88,
+    "composite_score": 0.90552,
+    "reason": "The Corvette crossed-flags logo is clearly printed on the watch face.",
+    "usage": {
+      "prompt_tokens": 1231,
+      "completion_tokens": 70,
+      "total_tokens": 1301
+    },
+    "cost": 0.0037775000000000005,
+    "latency_s": 25.5,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a small partial badge-like element, not the full circular logo with its complete outline and internal checker/arrow details.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031475000000000006
+  },
+  {
+    "sample": "1969989",
+    "evidence": "01_rId13_image10.png",
+    "found": true,
+    "bbox": [
+      98,
+      16,
+      350,
+      397
+    ],
+    "confidence": 0.99,
+    "clarity": 0.86,
+    "completeness": 1.0,
+    "isolation": 0.55,
+    "composite_score": 0.7840800000000001,
+    "reason": "The full NBA silhouette logo is clearly visible as the main printed graphic on the poster.",
+    "usage": {
+      "prompt_tokens": 1489,
+      "completion_tokens": 73,
+      "total_tokens": 1562
+    },
+    "cost": 0.0044525,
+    "latency_s": 9.25,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        98,
+        16,
+        350,
+        397
+      ],
+      "verify_confidence": 0.99,
+      "verify_reason": "The full NBA dribbling silhouette is clearly present and not clipped, with only modest surrounding poster context.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0037425000000000006
+  },
+  {
+    "sample": "1969989",
+    "evidence": "02_rId14_image11.png",
+    "found": true,
+    "bbox": [
+      32,
+      0,
+      188,
+      373
+    ],
+    "confidence": 0.99,
+    "clarity": 0.88,
+    "completeness": 1.0,
+    "isolation": 0.93,
+    "composite_score": 0.93852,
+    "reason": "The full NBA silhouette logo is clearly printed as the main product graphic.",
+    "usage": {
+      "prompt_tokens": 1263,
+      "completion_tokens": 70,
+      "total_tokens": 1333
+    },
+    "cost": 0.0038575000000000003,
+    "latency_s": 11.75,
+    "verify": {
+      "verified": true,
+      "fit": "too_tight",
+      "iters": 2,
+      "final_bbox": [
+        1,
+        0,
+        213,
+        447
+      ],
+      "verify_confidence": 0.94,
+      "verify_reason": "The full WNBA player silhouette is present, but the figure is clipped by the crop edges at the top and left.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0035300000000000006
+  },
+  {
+    "sample": "1969989",
+    "evidence": "03_rId15_image12.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.18,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.18,
+    "reason": "The photo shows NBA paper marks, not the full basketball-player logo.",
+    "usage": {
+      "prompt_tokens": 4102,
+      "completion_tokens": 64,
+      "total_tokens": 4166
+    },
+    "cost": 0.010895,
+    "latency_s": 5.84,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "04_rId16_image13.png",
+    "found": true,
+    "bbox": [
+      1,
+      0,
+      48,
+      49
+    ],
+    "confidence": 0.98,
+    "clarity": 0.9,
+    "completeness": 1.0,
+    "isolation": 0.9,
+    "composite_score": 0.9212,
+    "reason": "The NBA silhouette logo is clearly visible on the product icon.",
+    "usage": {
+      "prompt_tokens": 1136,
+      "completion_tokens": 62,
+      "total_tokens": 1198
+    },
+    "cost": 0.00346,
+    "latency_s": 6.63,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows the NBA-style silhouette, not the registered line-art logo from Image 1.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032375000000000004
+  },
+  {
+    "sample": "1969989",
+    "evidence": "05_rId17_image14.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.04,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.04,
+    "reason": "No clear match to the registered logo is visible on the product.",
+    "usage": {
+      "prompt_tokens": 2338,
+      "completion_tokens": 63,
+      "total_tokens": 2401
+    },
+    "cost": 0.006475000000000001,
+    "latency_s": 10.5,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "06_rId18_image15.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      51,
+      53
+    ],
+    "confidence": 0.99,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.98,
+    "composite_score": 0.9721799999999999,
+    "reason": "The NBA silhouette logo is clearly visible as the main branding on the product.",
+    "usage": {
+      "prompt_tokens": 1138,
+      "completion_tokens": 65,
+      "total_tokens": 1203
+    },
+    "cost": 0.0034950000000000003,
+    "latency_s": 7.1,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.88,
+      "verify_reason": "The crop shows a filled NBA-style player silhouette in a colored rectangle, not the registered line-art outline logo as a whole.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032375000000000004
+  },
+  {
+    "sample": "1969989",
+    "evidence": "07_rId19_image16.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.06,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.06,
+    "reason": "No clear match; the image shows an NBA card with the logo-like mark only as a small printed emblem, not the registered silhouette branding.",
+    "usage": {
+      "prompt_tokens": 2338,
+      "completion_tokens": 78,
+      "total_tokens": 2416
+    },
+    "cost": 0.006625000000000001,
+    "latency_s": 8.59,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "08_rId20_image17.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      46,
+      77
+    ],
+    "confidence": 0.97,
+    "clarity": 0.88,
+    "completeness": 0.95,
+    "isolation": 0.92,
+    "composite_score": 0.89628,
+    "reason": "The NBA logo is clearly visible as the main branding on the product.",
+    "usage": {
+      "prompt_tokens": 1138,
+      "completion_tokens": 64,
+      "total_tokens": 1202
+    },
+    "cost": 0.0034850000000000003,
+    "latency_s": 15.17,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows the NBA-style silhouette logo, but the registered line-art mark in Image 1 is a different outline and internal pose details.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0033350000000000003
+  },
+  {
+    "sample": "1969989",
+    "evidence": "09_rId21_image18.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.04,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.04,
+    "reason": "The small mark on the jersey is not the registered logo; it looks like a different tiny emblem.",
+    "usage": {
+      "prompt_tokens": 1901,
+      "completion_tokens": 70,
+      "total_tokens": 1971
+    },
+    "cost": 0.005452500000000001,
+    "latency_s": 4.9,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "10_rId22_image19.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.11,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.11,
+    "reason": "Image 2 is too small and unclear to confirm the logo.",
+    "usage": {
+      "prompt_tokens": 1131,
+      "completion_tokens": 57,
+      "total_tokens": 1188
+    },
+    "cost": 0.0033975000000000003,
+    "latency_s": 4.0,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "11_rId23_image20.png",
+    "found": true,
+    "bbox": [
+      770,
+      70,
+      1110,
+      711
+    ],
+    "confidence": 0.99,
+    "clarity": 0.98,
+    "completeness": 1.0,
+    "isolation": 0.72,
+    "composite_score": 0.8751599999999999,
+    "reason": "The NBA player silhouette logo is clearly visible on the card front as branding.",
+    "usage": {
+      "prompt_tokens": 2338,
+      "completion_tokens": 72,
+      "total_tokens": 2410
+    },
+    "cost": 0.0065650000000000005,
+    "latency_s": 9.76,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.98,
+      "verify_reason": "The crop shows a real basketball player photo, not the full line-art dribbling silhouette logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0043100000000000005
+  },
+  {
+    "sample": "1969989",
+    "evidence": "12_rId24_image21.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      24,
+      50
+    ],
+    "confidence": 0.98,
+    "clarity": 0.78,
+    "completeness": 1.0,
+    "isolation": 0.92,
+    "composite_score": 0.90552,
+    "reason": "The NBA silhouette logo is clearly shown on the product as a small branded mark.",
+    "usage": {
+      "prompt_tokens": 1138,
+      "completion_tokens": 66,
+      "total_tokens": 1204
+    },
+    "cost": 0.0035050000000000003,
+    "latency_s": 6.66,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a small partial colored edge, not the full outlined dribbling-player logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031825
+  },
+  {
+    "sample": "1969989",
+    "evidence": "13_rId25_image22.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.08,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.08,
+    "reason": "No clear NBA player silhouette logo appears as product branding in the photo.",
+    "usage": {
+      "prompt_tokens": 3893,
+      "completion_tokens": 64,
+      "total_tokens": 3957
+    },
+    "cost": 0.010372500000000002,
+    "latency_s": 6.12,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "14_rId26_image23.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.18,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.18,
+    "reason": "The photo is too small and busy to confirm the full trademark shape.",
+    "usage": {
+      "prompt_tokens": 1131,
+      "completion_tokens": 64,
+      "total_tokens": 1195
+    },
+    "cost": 0.0034675,
+    "latency_s": 28.44,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "15_rId27_image24.png",
+    "found": true,
+    "bbox": [
+      189,
+      118,
+      213,
+      143
+    ],
+    "confidence": 0.99,
+    "clarity": 0.95,
+    "completeness": 0.98,
+    "isolation": 0.92,
+    "composite_score": 0.9405,
+    "reason": "The NBA logo is clearly printed near the top of the package.",
+    "usage": {
+      "prompt_tokens": 1489,
+      "completion_tokens": 69,
+      "total_tokens": 1558
+    },
+    "cost": 0.0044125,
+    "latency_s": 8.08,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The candidate crop is essentially blank/dark and does not show the registered logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031425
+  },
+  {
+    "sample": "1969989",
+    "evidence": "16_rId28_image25.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.12,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.12,
+    "reason": "The photo is too small to confirm the registered logo; it appears more like an NBA-style mark than the given silhouette.",
+    "usage": {
+      "prompt_tokens": 1131,
+      "completion_tokens": 68,
+      "total_tokens": 1199
+    },
+    "cost": 0.0035075,
+    "latency_s": 3.69,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "17_rId29_image26.png",
+    "found": true,
+    "bbox": [
+      783,
+      1453,
+      1194,
+      1900
+    ],
+    "confidence": 0.98,
+    "clarity": 0.92,
+    "completeness": 0.98,
+    "isolation": 0.91,
+    "composite_score": 0.9212,
+    "reason": "The NBA silhouette logo is clearly printed on the padfolio cover.",
+    "usage": {
+      "prompt_tokens": 3893,
+      "completion_tokens": 72,
+      "total_tokens": 3965
+    },
+    "cost": 0.010452500000000002,
+    "latency_s": 10.19,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only background/header areas and no visible basketball-player logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032775
+  },
+  {
+    "sample": "1969989",
+    "evidence": "18_rId30_image27.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.18,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.18,
+    "reason": "The photo shows a tiny NBA-style mark, but the registered silhouette logo is not clearly present as a whole.",
+    "usage": {
+      "prompt_tokens": 1131,
+      "completion_tokens": 66,
+      "total_tokens": 1197
+    },
+    "cost": 0.0034875,
+    "latency_s": 15.45,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "1969989",
+    "evidence": "19_rId31_image28.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.12,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.12,
+    "reason": "The photo shows an NBA logo, not the registered silhouette mark.",
+    "usage": {
+      "prompt_tokens": 1489,
+      "completion_tokens": 57,
+      "total_tokens": 1546
+    },
+    "cost": 0.0042925,
+    "latency_s": 3.63,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "01_rId5_image2.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.05,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.05,
+    "reason": "The photo shows the Gatorade brand logo, not the basketball-player trademark in the registry image.",
+    "usage": {
+      "prompt_tokens": 2068,
+      "completion_tokens": 70,
+      "total_tokens": 2138
+    },
+    "cost": 0.00587,
+    "latency_s": 5.44,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "02_rId6_image3.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      41,
+      64
+    ],
+    "confidence": 0.99,
+    "clarity": 1.0,
+    "completeness": 1.0,
+    "isolation": 1.0,
+    "composite_score": 0.99,
+    "reason": "The NBA silhouette logo is clearly visible as the main branding on the icon.",
+    "usage": {
+      "prompt_tokens": 1136,
+      "completion_tokens": 65,
+      "total_tokens": 1201
+    },
+    "cost": 0.00349,
+    "latency_s": 9.08,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows the full NBA vertical logo, not the registered line-art player outline alone.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031750000000000003
+  },
+  {
+    "sample": "2423810",
+    "evidence": "03_rId7_image4.png",
+    "found": true,
+    "bbox": [
+      87,
+      102,
+      108,
+      158
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.85,
+    "composite_score": 0.9113999999999999,
+    "reason": "The NBA-style dribbling player silhouette appears clearly as a product branding mark on the FitStix wrapper.",
+    "usage": {
+      "prompt_tokens": 1389,
+      "completion_tokens": 78,
+      "total_tokens": 1467
+    },
+    "cost": 0.0042525,
+    "latency_s": 9.81,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a narrow colored edge and no complete logo shape.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.003135
+  },
+  {
+    "sample": "2423810",
+    "evidence": "04_rId8_image5.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.08,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.08,
+    "reason": "The photo is too small and does not clearly show the full registered logo shape.",
+    "usage": {
+      "prompt_tokens": 1131,
+      "completion_tokens": 60,
+      "total_tokens": 1191
+    },
+    "cost": 0.0034275,
+    "latency_s": 4.05,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "05_rId9_image6.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.12,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.12,
+    "reason": "Only a tiny decorative figure is visible and the full trademark shape is not readable.",
+    "usage": {
+      "prompt_tokens": 1397,
+      "completion_tokens": 66,
+      "total_tokens": 1463
+    },
+    "cost": 0.004152500000000001,
+    "latency_s": 5.76,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "06_rId10_image7.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.08,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.08,
+    "reason": "The photo is too small and indistinct to confirm the full trademark outline.",
+    "usage": {
+      "prompt_tokens": 1136,
+      "completion_tokens": 59,
+      "total_tokens": 1195
+    },
+    "cost": 0.00343,
+    "latency_s": 12.64,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "2423810",
+    "evidence": "07_rId11_image8.png",
+    "found": true,
+    "bbox": [
+      145,
+      201,
+      253,
+      440
+    ],
+    "confidence": 0.99,
+    "clarity": 0.98,
+    "completeness": 1.0,
+    "isolation": 0.93,
+    "composite_score": 0.95832,
+    "reason": "The full NBA logo is clearly printed on the can front.",
+    "usage": {
+      "prompt_tokens": 1489,
+      "completion_tokens": 68,
+      "total_tokens": 1557
+    },
+    "cost": 0.0044025,
+    "latency_s": 8.36,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        162,
+        172,
+        266,
+        338
+      ],
+      "verify_confidence": 0.98,
+      "verify_reason": "The full NBA dribbler silhouette is clearly present, but the crop includes extra surrounding packaging and text.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0034225000000000006
+  },
+  {
+    "sample": "3089225",
+    "evidence": "01_rId68_image65.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.18,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.18,
+    "reason": "The logo-like mark on the package is too obscured and does not clearly match the registered outline.",
+    "usage": {
+      "prompt_tokens": 3996,
+      "completion_tokens": 64,
+      "total_tokens": 4060
+    },
+    "cost": 0.01063,
+    "latency_s": 7.44,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "02_rId69_image66.png",
+    "found": true,
+    "bbox": [
+      38,
+      41,
+      557,
+      287
+    ],
+    "confidence": 0.88,
+    "clarity": 0.52,
+    "completeness": 0.84,
+    "isolation": 0.71,
+    "composite_score": 0.63712,
+    "reason": "The product shows the same two-lobed trademark outline as branding, though it is blurry.",
+    "usage": {
+      "prompt_tokens": 1344,
+      "completion_tokens": 68,
+      "total_tokens": 1412
+    },
+    "cost": 0.00404,
+    "latency_s": 9.46,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        38,
+        41,
+        557,
+        287
+      ],
+      "verify_confidence": 0.93,
+      "verify_reason": "The crop shows the full two-loop outline of the registered logo, with no obvious clipping at the edges.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0037850000000000006
+  },
+  {
+    "sample": "3089225",
+    "evidence": "03_rId70_image67.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.07,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.07,
+    "reason": "The logo appears only as a website page graphic, not as branding on the product photo.",
+    "usage": {
+      "prompt_tokens": 3996,
+      "completion_tokens": 68,
+      "total_tokens": 4064
+    },
+    "cost": 0.01067,
+    "latency_s": 7.25,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "04_rId71_image68.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.18,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.18,
+    "reason": "The photo shows a similar-shaped product, but no registered logo branding is visible.",
+    "usage": {
+      "prompt_tokens": 1309,
+      "completion_tokens": 60,
+      "total_tokens": 1369
+    },
+    "cost": 0.0038725,
+    "latency_s": 4.53,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "3089225",
+    "evidence": "05_rId72_image69.png",
+    "found": true,
+    "bbox": [
+      116,
+      338,
+      255,
+      404
+    ],
+    "confidence": 0.99,
+    "clarity": 0.98,
+    "completeness": 0.95,
+    "isolation": 0.9,
+    "composite_score": 0.9266399999999999,
+    "reason": "The 180s logo appears clearly as branding in the top-left of the page.",
+    "usage": {
+      "prompt_tokens": 3996,
+      "completion_tokens": 67,
+      "total_tokens": 4063
+    },
+    "cost": 0.010660000000000001,
+    "latency_s": 8.24,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows interface text and an icon, not the registered looped line-art logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031650000000000003
+  },
+  {
+    "sample": "3089225",
+    "evidence": "06_rId73_image70.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      63,
+      63
+    ],
+    "confidence": 0.82,
+    "clarity": 0.58,
+    "completeness": 0.96,
+    "isolation": 0.88,
+    "composite_score": 0.6986399999999999,
+    "reason": "The shoe-like outline and internal contours match the registered logo on the product image.",
+    "usage": {
+      "prompt_tokens": 1117,
+      "completion_tokens": 66,
+      "total_tokens": 1183
+    },
+    "cost": 0.0034525000000000003,
+    "latency_s": 8.45,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.9,
+      "verify_reason": "The crop shows only a blurry partial shape and lacks the registered logo's full distinct outline and internal contour.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031575
+  },
+  {
+    "sample": "3089225",
+    "evidence": "07_rId74_image71.png",
+    "found": false,
+    "bbox": null,
+    "confidence": 0.06,
+    "clarity": 0.0,
+    "completeness": 0.0,
+    "isolation": 0.0,
+    "composite_score": 0.06,
+    "reason": "No clear instance of the registered logo appears on the product.",
+    "usage": {
+      "prompt_tokens": 3996,
+      "completion_tokens": 62,
+      "total_tokens": 4058
+    },
+    "cost": 0.010610000000000001,
+    "latency_s": 5.37,
+    "verify": {
+      "verified": false,
+      "fit": null,
+      "iters": 1,
+      "final_bbox": null,
+      "verify_confidence": null,
+      "verify_reason": null,
+      "skipped_reason": "not_found"
+    },
+    "verify_cost": 0.0
+  },
+  {
+    "sample": "4334451",
+    "evidence": "01_rId54_image51.png",
+    "found": true,
+    "bbox": [
+      241,
+      163,
+      376,
+      290
+    ],
+    "confidence": 0.97,
+    "clarity": 0.88,
+    "completeness": 0.92,
+    "isolation": 0.97,
+    "composite_score": 0.9040400000000001,
+    "reason": "Clear single eagle logo badge matching the registered mark.",
+    "usage": {
+      "prompt_tokens": 1392,
+      "completion_tokens": 60,
+      "total_tokens": 1452
+    },
+    "cost": 0.00408,
+    "latency_s": 8.99,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        241,
+        163,
+        376,
+        290
+      ],
+      "verify_confidence": 0.97,
+      "verify_reason": "The full bird logo with matching head, wings, and tail is clearly visible and fully contained in the crop.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032225
+  },
+  {
+    "sample": "4334451",
+    "evidence": "02_rId55_image52.png",
+    "found": true,
+    "bbox": [
+      33,
+      11,
+      153,
+      120
+    ],
+    "confidence": 0.97,
+    "clarity": 0.86,
+    "completeness": 0.93,
+    "isolation": 0.74,
+    "composite_score": 0.8148000000000001,
+    "reason": "The eagle emblem matches the registered outline and internal feather pattern, clearly used as a product badge.",
+    "usage": {
+      "prompt_tokens": 1146,
+      "completion_tokens": 69,
+      "total_tokens": 1215
+    },
+    "cost": 0.0035550000000000004,
+    "latency_s": 7.96,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.84,
+      "verify_reason": "The crop shows only a partial bird emblem with the right wing cut off and the full registered logo not visible as a whole.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032350000000000005
+  },
+  {
+    "sample": "4334451",
+    "evidence": "03_rId56_image53.png",
+    "found": true,
+    "bbox": [
+      32,
+      400,
+      258,
+      553
+    ],
+    "confidence": 0.98,
+    "clarity": 0.97,
+    "completeness": 0.96,
+    "isolation": 0.63,
+    "composite_score": 0.8134,
+    "reason": "The bird-wing emblem matches the registered logo and is shown clearly as product branding.",
+    "usage": {
+      "prompt_tokens": 1902,
+      "completion_tokens": 66,
+      "total_tokens": 1968
+    },
+    "cost": 0.0054150000000000005,
+    "latency_s": 9.23,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        42,
+        391,
+        242,
+        544
+      ],
+      "verify_confidence": 0.91,
+      "verify_reason": "The full bird logo is present and matches the registered mark, but the crop includes substantial surrounding page content.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0033850000000000004
+  },
+  {
+    "sample": "4334451",
+    "evidence": "04_rId57_image54.png",
+    "found": true,
+    "bbox": [
+      17,
+      19,
+      238,
+      165
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 1.0,
+    "isolation": 0.98,
+    "composite_score": 0.96236,
+    "reason": "The full eagle logo matches the registry mark and is clearly printed as the main product graphic.",
+    "usage": {
+      "prompt_tokens": 1138,
+      "completion_tokens": 74,
+      "total_tokens": 1212
+    },
+    "cost": 0.0035850000000000005,
+    "latency_s": 7.68,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        17,
+        19,
+        238,
+        165
+      ],
+      "verify_confidence": 0.98,
+      "verify_reason": "The full bird logo with matching outline, wing panels, and central tail is clearly visible and not clipped.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.00321
+  },
+  {
+    "sample": "4334451",
+    "evidence": "05_rId58_image55.png",
+    "found": true,
+    "bbox": [
+      470,
+      247,
+      944,
+      560
+    ],
+    "confidence": 0.98,
+    "clarity": 0.95,
+    "completeness": 0.98,
+    "isolation": 0.73,
+    "composite_score": 0.8565199999999998,
+    "reason": "The product photo shows the full bird emblem branding clearly on the item.",
+    "usage": {
+      "prompt_tokens": 3040,
+      "completion_tokens": 64,
+      "total_tokens": 3104
+    },
+    "cost": 0.00824,
+    "latency_s": 8.45,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        481,
+        258,
+        971,
+        545
+      ],
+      "verify_confidence": 0.93,
+      "verify_reason": "The full eagle logo with matching outline and internal wing and tail divisions is fully visible, with extra background around it.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0040750000000000005
+  },
+  {
+    "sample": "4338293",
+    "evidence": "01_rId34_image31.png",
+    "found": true,
+    "bbox": [
+      336,
+      438,
+      455,
+      566
+    ],
+    "confidence": 0.96,
+    "clarity": 0.86,
+    "completeness": 0.98,
+    "isolation": 0.72,
+    "composite_score": 0.81792,
+    "reason": "The Firebird emblem is clearly visible on the wheel cap and matches the registered outline.",
+    "usage": {
+      "prompt_tokens": 3062,
+      "completion_tokens": 67,
+      "total_tokens": 3129
+    },
+    "cost": 0.008325,
+    "latency_s": 8.58,
+    "verify": {
+      "verified": true,
+      "fit": "too_tight",
+      "iters": 2,
+      "final_bbox": [
+        313,
+        413,
+        478,
+        591
+      ],
+      "verify_confidence": 0.96,
+      "verify_reason": "The full Firebird bird logo is present, but the crop clips the outer wing tips and surrounding emblem edges.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032975000000000005
+  },
+  {
+    "sample": "4338293",
+    "evidence": "02_rId35_image32.png",
+    "found": true,
+    "bbox": [
+      12,
+      1,
+      39,
+      26
+    ],
+    "confidence": 0.92,
+    "clarity": 0.58,
+    "completeness": 0.88,
+    "isolation": 0.92,
+    "composite_score": 0.7691200000000001,
+    "reason": "The winged bird logo is clearly present as the main emblem on the patch.",
+    "usage": {
+      "prompt_tokens": 1128,
+      "completion_tokens": 66,
+      "total_tokens": 1194
+    },
+    "cost": 0.00348,
+    "latency_s": 7.38,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a small tan-and-black corner, not the full firebird logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.003135
+  },
+  {
+    "sample": "4338293",
+    "evidence": "03_rId36_image33.png",
+    "found": true,
+    "bbox": [
+      352,
+      346,
+      419,
+      419
+    ],
+    "confidence": 0.95,
+    "clarity": 0.94,
+    "completeness": 0.98,
+    "isolation": 0.72,
+    "composite_score": 0.8245999999999999,
+    "reason": "Clear full logo appears as a wheel-cap emblem in the product grid.",
+    "usage": {
+      "prompt_tokens": 1946,
+      "completion_tokens": 64,
+      "total_tokens": 2010
+    },
+    "cost": 0.005505,
+    "latency_s": 17.38,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        352,
+        346,
+        419,
+        419
+      ],
+      "verify_confidence": 0.92,
+      "verify_reason": "The crop contains the full Firebird bird emblem with matching wing shapes and central head, fully visible within the circle logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032250000000000004
+  },
+  {
+    "sample": "4338293",
+    "evidence": "04_rId37_image34.png",
+    "found": true,
+    "bbox": [
+      6,
+      0,
+      50,
+      48
+    ],
+    "confidence": 0.98,
+    "clarity": 0.9,
+    "completeness": 0.92,
+    "isolation": 0.55,
+    "composite_score": 0.7526400000000001,
+    "reason": "The bird-wing logo matches the registered trademark and is clearly visible as the main branding on the shirt.",
+    "usage": {
+      "prompt_tokens": 1122,
+      "completion_tokens": 70,
+      "total_tokens": 1192
+    },
+    "cost": 0.0035050000000000003,
+    "latency_s": 7.67,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.91,
+      "verify_reason": "The crop shows only a small clipped portion of the bird emblem and not the full registered logo as a whole.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.00318
+  },
+  {
+    "sample": "4338293",
+    "evidence": "05_rId38_image35.png",
+    "found": true,
+    "bbox": [
+      10,
+      0,
+      39,
+      23
+    ],
+    "confidence": 0.96,
+    "clarity": 0.72,
+    "completeness": 0.88,
+    "isolation": 0.86,
+    "composite_score": 0.8064,
+    "reason": "The winged emblem is clearly visible as the main branding on the garment.",
+    "usage": {
+      "prompt_tokens": 1122,
+      "completion_tokens": 71,
+      "total_tokens": 1193
+    },
+    "cost": 0.0035150000000000003,
+    "latency_s": 8.37,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a small partial tan shape, not the full firebird logo with its distinctive wings and bird head.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031950000000000004
+  },
+  {
+    "sample": "4338293",
+    "evidence": "06_rId39_image36.png",
+    "found": true,
+    "bbox": [
+      28,
+      382,
+      229,
+      599
+    ],
+    "confidence": 0.97,
+    "clarity": 0.92,
+    "completeness": 0.95,
+    "isolation": 0.88,
+    "composite_score": 0.88852,
+    "reason": "The Firebird winged emblem is clearly shown as the product branding on the wheel cap.",
+    "usage": {
+      "prompt_tokens": 1973,
+      "completion_tokens": 74,
+      "total_tokens": 2047
+    },
+    "cost": 0.0056725000000000005,
+    "latency_s": 10.45,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        29,
+        381,
+        241,
+        578
+      ],
+      "verify_confidence": 0.96,
+      "verify_reason": "The full Firebird-style bird emblem is clearly present inside a larger circular badge with extra surrounding space.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0034900000000000005
+  },
+  {
+    "sample": "4601531",
+    "evidence": "01_rId61_image58.png",
+    "found": true,
+    "bbox": [
+      323,
+      291,
+      574,
+      402
+    ],
+    "confidence": 0.98,
+    "clarity": 0.96,
+    "completeness": 0.97,
+    "isolation": 0.62,
+    "composite_score": 0.81144,
+    "reason": "The Corvette Stingray emblem is clearly shown as the product photo.",
+    "usage": {
+      "prompt_tokens": 1881,
+      "completion_tokens": 63,
+      "total_tokens": 1944
+    },
+    "cost": 0.0053325000000000004,
+    "latency_s": 8.74,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        323,
+        291,
+        574,
+        402
+      ],
+      "verify_confidence": 0.96,
+      "verify_reason": "The full dart-like logo with the long horizontal shaft and faceted right-side shape is fully visible and closely fits the crop.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032025000000000005
+  },
+  {
+    "sample": "4601531",
+    "evidence": "02_rId62_image59.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      283,
+      94
+    ],
+    "confidence": 0.98,
+    "clarity": 0.98,
+    "completeness": 1.0,
+    "isolation": 0.8,
+    "composite_score": 0.8976800000000001,
+    "reason": "The logo matches the full registered arrowhead mark on the object.",
+    "usage": {
+      "prompt_tokens": 1081,
+      "completion_tokens": 69,
+      "total_tokens": 1150
+    },
+    "cost": 0.0033925,
+    "latency_s": 8.48,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        0,
+        0,
+        283,
+        94
+      ],
+      "verify_confidence": 0.96,
+      "verify_reason": "The crop contains the full stylized arrowhead logo with its long shaft and matching internal prongs fully visible.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0030775000000000004
+  },
+  {
+    "sample": "4601531",
+    "evidence": "03_rId63_image60.png",
+    "found": true,
+    "bbox": [
+      345,
+      168,
+      496,
+      235
+    ],
+    "confidence": 0.98,
+    "clarity": 0.94,
+    "completeness": 0.98,
+    "isolation": 0.75,
+    "composite_score": 0.8624,
+    "reason": "The Corvette stingray pin clearly matches the registered logo as a whole.",
+    "usage": {
+      "prompt_tokens": 1665,
+      "completion_tokens": 70,
+      "total_tokens": 1735
+    },
+    "cost": 0.0048625000000000005,
+    "latency_s": 10.12,
+    "verify": {
+      "verified": true,
+      "fit": "too_tight",
+      "iters": 2,
+      "final_bbox": [
+        315,
+        155,
+        526,
+        248
+      ],
+      "verify_confidence": 0.89,
+      "verify_reason": "The full arrow-like logo with matching central cutout and diamond tail is present, but the right side is clipped by the crop edge.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0031400000000000004
+  },
+  {
+    "sample": "4601531",
+    "evidence": "04_rId64_image61.png",
+    "found": true,
+    "bbox": [
+      96,
+      3,
+      248,
+      72
+    ],
+    "confidence": 0.98,
+    "clarity": 0.96,
+    "completeness": 0.99,
+    "isolation": 0.94,
+    "composite_score": 0.94472,
+    "reason": "The logo matches the registered trademark and is clearly visible as the main product branding.",
+    "usage": {
+      "prompt_tokens": 1078,
+      "completion_tokens": 66,
+      "total_tokens": 1144
+    },
+    "cost": 0.0033550000000000003,
+    "latency_s": 7.0,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.9,
+      "verify_reason": "The crop shows only a partial, altered version of the logo and the full registered mark is not visible as a whole.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0030725
+  },
+  {
+    "sample": "4601531",
+    "evidence": "05_rId65_image62.png",
+    "found": true,
+    "bbox": [
+      376,
+      475,
+      736,
+      604
+    ],
+    "confidence": 0.97,
+    "clarity": 0.9,
+    "completeness": 1.0,
+    "isolation": 0.7,
+    "composite_score": 0.8341999999999999,
+    "reason": "The Corvette Stingray emblem is clearly shown as the product image.",
+    "usage": {
+      "prompt_tokens": 2997,
+      "completion_tokens": 69,
+      "total_tokens": 3066
+    },
+    "cost": 0.0081825,
+    "latency_s": 21.61,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        376,
+        475,
+        736,
+        604
+      ],
+      "verify_confidence": 0.98,
+      "verify_reason": "The candidate crop shows the full stylized spear-and-diamond logo with matching overall shape and internal features.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.003285
+  },
+  {
+    "sample": "4827580",
+    "evidence": "01_rId42_image39.png",
+    "found": true,
+    "bbox": [
+      279,
+      165,
+      386,
+      236
+    ],
+    "confidence": 0.97,
+    "clarity": 0.86,
+    "completeness": 0.92,
+    "isolation": 0.79,
+    "composite_score": 0.8303200000000002,
+    "reason": "The Cadillac crest is clearly printed on the pen barrel as branding.",
+    "usage": {
+      "prompt_tokens": 2157,
+      "completion_tokens": 69,
+      "total_tokens": 2226
+    },
+    "cost": 0.006082500000000001,
+    "latency_s": 10.92,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        279,
+        165,
+        386,
+        236
+      ],
+      "verify_confidence": 0.93,
+      "verify_reason": "The full Cadillac crest outline and internal bar pattern are visible in the crop with only slight surrounding padding.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0030475000000000003
+  },
+  {
+    "sample": "4827580",
+    "evidence": "02_rId43_image40.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      73,
+      23
+    ],
+    "confidence": 0.96,
+    "clarity": 0.9,
+    "completeness": 1.0,
+    "isolation": 0.9,
+    "composite_score": 0.9024,
+    "reason": "Clear registered emblem visible as the main branding on the product.",
+    "usage": {
+      "prompt_tokens": 1060,
+      "completion_tokens": 68,
+      "total_tokens": 1128
+    },
+    "cost": 0.00333,
+    "latency_s": 28.74,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a small clipped top portion of the crest, not the full registered logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0029850000000000002
+  },
+  {
+    "sample": "4827580",
+    "evidence": "03_rId44_image41.png",
+    "found": true,
+    "bbox": [
+      135,
+      175,
+      221,
+      226
+    ],
+    "confidence": 0.97,
+    "clarity": 0.88,
+    "completeness": 0.92,
+    "isolation": 0.61,
+    "composite_score": 0.7643600000000002,
+    "reason": "The Cadillac crest appears clearly as branding in the page header.",
+    "usage": {
+      "prompt_tokens": 2997,
+      "completion_tokens": 68,
+      "total_tokens": 3065
+    },
+    "cost": 0.008172500000000001,
+    "latency_s": 38.93,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        153,
+        173,
+        209,
+        207
+      ],
+      "verify_confidence": 0.94,
+      "verify_reason": "The full Cadillac crest logo is present, but the crop includes substantial surrounding whitespace and text.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0030725
+  },
+  {
+    "sample": "4827580",
+    "evidence": "04_rId45_image42.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      66,
+      30
+    ],
+    "confidence": 0.98,
+    "clarity": 0.96,
+    "completeness": 0.99,
+    "isolation": 0.9,
+    "composite_score": 0.92904,
+    "reason": "The Cadillac crest logo is clearly visible on the product and matches the registry image.",
+    "usage": {
+      "prompt_tokens": 1060,
+      "completion_tokens": 72,
+      "total_tokens": 1132
+    },
+    "cost": 0.00337,
+    "latency_s": 7.71,
+    "verify": {
+      "verified": true,
+      "fit": "tight",
+      "iters": 2,
+      "final_bbox": [
+        0,
+        0,
+        66,
+        30
+      ],
+      "verify_confidence": 0.97,
+      "verify_reason": "The full Cadillac crest logo is present in the crop with all key outline and internal panel features visible.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0030050000000000003
+  },
+  {
+    "sample": "4827580",
+    "evidence": "05_rId46_image43.png",
+    "found": true,
+    "bbox": [
+      770,
+      389,
+      803,
+      434
+    ],
+    "confidence": 0.93,
+    "clarity": 0.78,
+    "completeness": 0.88,
+    "isolation": 0.61,
+    "composite_score": 0.6993600000000001,
+    "reason": "The Cadillac crest logo is clearly printed on the pen as branding.",
+    "usage": {
+      "prompt_tokens": 2519,
+      "completion_tokens": 69,
+      "total_tokens": 2588
+    },
+    "cost": 0.006987500000000001,
+    "latency_s": 7.89,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop is blank and does not show the registered logo.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0029175000000000004
+  },
+  {
+    "sample": "4827580",
+    "evidence": "06_rId47_image44.png",
+    "found": true,
+    "bbox": [
+      0,
+      0,
+      38,
+      24
+    ],
+    "confidence": 0.98,
+    "clarity": 0.82,
+    "completeness": 0.95,
+    "isolation": 0.98,
+    "composite_score": 0.91728,
+    "reason": "The Cadillac crest is clearly visible as the main subject on the product.",
+    "usage": {
+      "prompt_tokens": 1060,
+      "completion_tokens": 64,
+      "total_tokens": 1124
+    },
+    "cost": 0.00329,
+    "latency_s": 6.37,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.99,
+      "verify_reason": "The crop shows only a tiny partial fragment of the logo, not the complete registered mark.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0029725000000000003
+  },
+  {
+    "sample": "4827580",
+    "evidence": "07_rId48_image45.png",
+    "found": true,
+    "bbox": [
+      589,
+      275,
+      820,
+      418
+    ],
+    "confidence": 0.98,
+    "clarity": 0.82,
+    "completeness": 0.92,
+    "isolation": 0.86,
+    "composite_score": 0.8584800000000001,
+    "reason": "The Cadillac crest is clearly embossed on the black pouch and matches the registry logo.",
+    "usage": {
+      "prompt_tokens": 2493,
+      "completion_tokens": 72,
+      "total_tokens": 2565
+    },
+    "cost": 0.0069525,
+    "latency_s": 11.39,
+    "verify": {
+      "verified": false,
+      "fit": "wrong",
+      "iters": 2,
+      "final_bbox": null,
+      "verify_confidence": 0.98,
+      "verify_reason": "The crop shows only a partial portion of the crest logo cut off at the right edge, not the full registered mark.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032575000000000004
+  },
+  {
+    "sample": "6433801",
+    "evidence": "01_rId51_image48.png",
+    "found": true,
+    "bbox": [
+      378,
+      659,
+      535,
+      847
+    ],
+    "confidence": 0.92,
+    "clarity": 0.71,
+    "completeness": 0.93,
+    "isolation": 0.58,
+    "composite_score": 0.6863200000000002,
+    "reason": "The Corvette crossed-flags logo is visible as branding on the windshield.",
+    "usage": {
+      "prompt_tokens": 3994,
+      "completion_tokens": 70,
+      "total_tokens": 4064
+    },
+    "cost": 0.010685,
+    "latency_s": 11.58,
+    "verify": {
+      "verified": true,
+      "fit": "loose",
+      "iters": 2,
+      "final_bbox": [
+        395,
+        710,
+        528,
+        810
+      ],
+      "verify_confidence": 0.88,
+      "verify_reason": "The full stylized Corvette crossed-flags logo is present and fully visible, but surrounded by substantial background.",
+      "skipped_reason": null
+    },
+    "verify_cost": 0.0032550000000000005
+  }
+]

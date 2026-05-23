@@ -1,0 +1,125 @@
+{
+  "run_id": "run_005_v2",
+  "prompt_version": "2",
+  "model": "gpt-5.4",
+  "samples": 10,
+  "matched": 10,
+  "mean_ssim": 0.34158422186238246,
+  "mean_phash": 27.4,
+  "pass_rate_ssim_50": 0.2,
+  "cost_usd_estimate": 0.496195,
+  "pairs": [
+    {
+      "sample": "1044246",
+      "candidate": "01_rId82_image79.png",
+      "expected": "04_rId85_image82.png",
+      "phash_distance": 32,
+      "ssim": 0.14363965996990824,
+      "notes": "conf=0.98 comp=0.98 iso=0.78 clar=0.93 bbox=(227, 649, 840, 922)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1494172",
+      "candidate": "01_rId77_image74.png",
+      "expected": "04_rId80_image77.png",
+      "phash_distance": 34,
+      "ssim": 0.11012022355381623,
+      "notes": "conf=0.97 comp=1.00 iso=0.84 clar=0.93 bbox=(250, 76, 352, 177)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1969989",
+      "candidate": "02_rId14_image11.png",
+      "expected": "20_rId32_image29.png",
+      "phash_distance": 22,
+      "ssim": 0.19579258317538345,
+      "notes": "conf=0.99 comp=1.00 iso=0.93 clar=0.88 bbox=(1, 0, 213, 447)  SEL_WRONG gold=12_rId24_image21.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "2423810",
+      "candidate": "07_rId11_image8.png",
+      "expected": "08_rId12_image9.png",
+      "phash_distance": 36,
+      "ssim": 0.22525672214245357,
+      "notes": "conf=0.99 comp=1.00 iso=0.93 clar=0.98 bbox=(162, 172, 266, 338)  SEL_WRONG gold=02_rId6_image3.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "3089225",
+      "candidate": "02_rId69_image66.png",
+      "expected": "08_rId75_image72.png",
+      "phash_distance": 38,
+      "ssim": 0.3441815587120816,
+      "notes": "conf=0.88 comp=0.84 iso=0.71 clar=0.52 bbox=(38, 41, 557, 287)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "4334451",
+      "candidate": "04_rId57_image54.png",
+      "expected": "06_rId59_image56.png",
+      "phash_distance": 12,
+      "ssim": 0.47229590600769145,
+      "notes": "conf=0.98 comp=1.00 iso=0.98 clar=0.95 bbox=(17, 19, 238, 165)  SEL_WRONG gold=03_rId56_image53.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4338293",
+      "candidate": "06_rId39_image36.png",
+      "expected": "07_rId40_image37.png",
+      "phash_distance": 34,
+      "ssim": 0.1574636280467818,
+      "notes": "conf=0.97 comp=0.95 iso=0.88 clar=0.92 bbox=(29, 381, 241, 578)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    },
+    {
+      "sample": "4601531",
+      "candidate": "02_rId62_image59.png",
+      "expected": "06_rId66_image63.png",
+      "phash_distance": 10,
+      "ssim": 0.7162352689324634,
+      "notes": "conf=0.98 comp=1.00 iso=0.80 clar=0.98 bbox=(0, 0, 283, 94)  SEL_WRONG gold=05_rId65_image62.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4827580",
+      "candidate": "04_rId45_image42.png",
+      "expected": "08_rId49_image46.png",
+      "phash_distance": 26,
+      "ssim": 0.32109955560353554,
+      "notes": "conf=0.98 comp=0.99 iso=0.90 clar=0.96 bbox=(0, 0, 66, 30)  SEL_WRONG gold=07_rId48_image45.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "6433801",
+      "candidate": "01_rId51_image48.png",
+      "expected": "02_rId52_image49.png",
+      "phash_distance": 30,
+      "ssim": 0.7297571124797095,
+      "notes": "conf=0.92 comp=0.93 iso=0.58 clar=0.71 bbox=(395, 710, 528, 810)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    }
+  ],
+  "selection_accuracy": 0.2857142857142857,
+  "selection_evaluated": 7,
+  "correct_selection": 2,
+  "bbox_iou_mean": 0.0,
+  "bbox_iou_pass_50": 0.0,
+  "bbox_iou_scored": 2,
+  "verify_enabled": true,
+  "verify_calls": 45,
+  "verified_true": 22,
+  "verified_false": 23,
+  "verify_rejected_to_NR": 23,
+  "verify_cost_usd_estimate": 0.1486775
+}

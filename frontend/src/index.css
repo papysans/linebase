@@ -1,0 +1,561 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================================
+   Liquid Glass design system — single source of truth for the surface look.
+   Components compose these utilities; pages should NOT redefine the recipe.
+   =========================================================================== */
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --lg-base: #f6f7fb;
+    --lg-text: 15 23 42;            /* slate-900 */
+    --lg-text-muted: 71 85 105;     /* slate-600 */
+    --lg-stroke: 255 255 255;
+    --lg-stroke-alpha: 0.55;
+    --lg-shadow-rim: inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      inset 0 -1px 0 rgba(15, 23, 42, 0.05);
+    --lg-shadow-lift: 0 1px 1px rgba(15, 23, 42, 0.04),
+      0 10px 30px rgba(15, 23, 42, 0.10),
+      0 28px 56px -24px rgba(15, 23, 42, 0.22);
+    --lg-fill: 255 255 255;
+    --lg-fill-alpha: 0.62;
+    --lg-fill-strong-alpha: 0.78;
+    --aurora-1: #f0abfc; /* magenta */
+    --aurora-2: #7dd3fc; /* cyan */
+    --aurora-3: #fde68a; /* gold */
+  }
+
+  html.dark {
+    --lg-base: #0b0d12;
+    --lg-text: 226 232 240;         /* slate-200 */
+    --lg-text-muted: 148 163 184;   /* slate-400 */
+    --lg-stroke: 255 255 255;
+    --lg-stroke-alpha: 0.14;
+    --lg-shadow-rim: inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+    --lg-shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35),
+      0 12px 32px rgba(0, 0, 0, 0.5),
+      0 28px 60px -20px rgba(0, 0, 0, 0.6);
+    --lg-fill: 20 22 28;
+    --lg-fill-alpha: 0.55;
+    --lg-fill-strong-alpha: 0.72;
+    --aurora-1: #a855f7;
+    --aurora-2: #38bdf8;
+    --aurora-3: #fbbf24;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--lg-base);
+    color: rgb(var(--lg-text));
+    font-family: theme("fontFamily.display");
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
+  }
+
+  /* Aurora — three oversized blurred blobs drifting slowly under everything. */
+  body::before,
+  body::after,
+  #root::before {
+    content: "";
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 9999px;
+    filter: blur(120px);
+    will-change: transform;
+  }
+
+  body::before {
+    top: -18vmax;
+    left: -10vmax;
+    width: 70vmax;
+    height: 70vmax;
+    background: radial-gradient(
+      circle,
+      var(--aurora-1) 0%,
+      transparent 65%
+    );
+    opacity: 0.55;
+    animation: aurora-drift 64s ease-in-out infinite;
+  }
+
+  body::after {
+    bottom: -22vmax;
+    right: -12vmax;
+    width: 80vmax;
+    height: 80vmax;
+    background: radial-gradient(
+      circle,
+      var(--aurora-2) 0%,
+      transparent 65%
+    );
+    opacity: 0.5;
+    animation: aurora-drift-2 80s ease-in-out infinite;
+  }
+
+  #root::before {
+    top: 30vh;
+    left: 30vw;
+    width: 50vmax;
+    height: 50vmax;
+    background: radial-gradient(
+      circle,
+      var(--aurora-3) 0%,
+      transparent 70%
+    );
+    opacity: 0.35;
+    animation: aurora-drift 96s ease-in-out infinite reverse;
+  }
+
+  html.dark body::before {
+    opacity: 0.32;
+  }
+  html.dark body::after {
+    opacity: 0.3;
+  }
+  html.dark #root::before {
+    opacity: 0.18;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before,
+    body::after,
+    #root::before {
+      animation: none !important;
+    }
+  }
+
+  /* Custom scrollbars — thin, glass-friendly. */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.15);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 23, 42, 0.28);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+  html.dark *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@layer components {
+  /* ------------------------------------------------------------------------
+     .glass-card / .glass-pane — primary surface
+     Real liquid-glass recipe: backdrop blur + saturation boost, alpha fill,
+     bevel border, multi-layer shadow (outer drop + inner highlight).
+     ------------------------------------------------------------------------ */
+  .glass-card,
+  .glass-pane {
+    position: relative;
+    background-color: rgba(
+      var(--lg-fill),
+      var(--lg-fill-alpha)
+    );
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+    border-radius: 20px;
+    box-shadow: var(--lg-shadow-rim), var(--lg-shadow-lift);
+    transition:
+      transform 250ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 250ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 250ms ease;
+  }
+
+  .glass-pane {
+    border-radius: 28px;
+  }
+
+  .glass-card.is-interactive:hover {
+    transform: translateY(-2px);
+  }
+
+  /* ------------------------------------------------------------------------
+     .glass-nav — floating top-center pill that contains the route nav.
+     ------------------------------------------------------------------------ */
+  .glass-nav {
+    background-color: rgba(
+      var(--lg-fill),
+      var(--lg-fill-strong-alpha)
+    );
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+    border-radius: 999px;
+    box-shadow: var(--lg-shadow-rim), var(--lg-shadow-lift);
+  }
+
+  /* ------------------------------------------------------------------------
+     .glass-button — base button surface; variants below.
+     ------------------------------------------------------------------------ */
+  .glass-button {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: rgb(var(--lg-text));
+    background-color: rgba(var(--lg-fill), 0.55);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 6px 16px -8px rgba(15, 23, 42, 0.25);
+    transition:
+      transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms ease,
+      background-color 200ms ease;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  html.dark .glass-button {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 6px 16px -8px rgba(0, 0, 0, 0.6);
+  }
+
+  .glass-button:hover:not(:disabled) {
+    background-color: rgba(var(--lg-fill), 0.75);
+    transform: translateY(-1px);
+  }
+  .glass-button:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 90ms;
+  }
+  .glass-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Sheen sweep on hover (matched against existing `.shimmer` keyframe). */
+  .glass-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 70%
+    );
+    transform: translateX(-120%) skewX(-12deg);
+    pointer-events: none;
+  }
+  .glass-button:hover:not(:disabled)::after {
+    animation: shimmer 900ms ease-out;
+  }
+  html.dark .glass-button::after {
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.16) 50%,
+      transparent 70%
+    );
+  }
+
+  /* Primary variant: magenta → cyan gradient fill on a glass shell. */
+  .glass-button--primary {
+    color: white;
+    background-image: linear-gradient(135deg, #f0abfc 0%, #7dd3fc 100%);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      0 12px 28px -10px rgba(217, 70, 239, 0.5),
+      0 6px 16px -6px rgba(125, 211, 252, 0.45);
+  }
+  html.dark .glass-button--primary {
+    background-image: linear-gradient(135deg, #a855f7 0%, #38bdf8 100%);
+  }
+  .glass-button--primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      0 18px 36px -10px rgba(217, 70, 239, 0.55),
+      0 10px 22px -6px rgba(125, 211, 252, 0.5);
+  }
+
+  .glass-button--ghost {
+    background-color: transparent;
+    box-shadow: none;
+    border: 1px solid transparent;
+  }
+  .glass-button--ghost:hover:not(:disabled) {
+    background-color: rgba(var(--lg-fill), 0.45);
+    border-color: rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+  }
+
+  .glass-button--success {
+    color: white;
+    background-image: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 12px 24px -10px rgba(16, 185, 129, 0.5);
+  }
+  .glass-button--warn {
+    color: white;
+    background-image: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 12px 24px -10px rgba(234, 88, 12, 0.5);
+  }
+
+  .glass-button--sm {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8125rem;
+    border-radius: 10px;
+  }
+  .glass-button--lg {
+    padding: 0.8rem 1.6rem;
+    font-size: 1rem;
+    border-radius: 16px;
+  }
+
+  /* ------------------------------------------------------------------------
+     .glass-input / .glass-select — form controls
+     ------------------------------------------------------------------------ */
+  .glass-input,
+  .glass-select {
+    appearance: none;
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    background-color: rgba(var(--lg-fill), 0.55);
+    backdrop-filter: blur(18px) saturate(170%);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    border: 1px solid rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+    border-radius: 12px;
+    color: rgb(var(--lg-text));
+    font-size: 0.9rem;
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease,
+      background-color 200ms ease;
+  }
+  .glass-input::placeholder {
+    color: rgb(var(--lg-text-muted) / 0.7);
+  }
+  .glass-input:focus,
+  .glass-select:focus {
+    outline: none;
+    border-color: #c084fc;
+    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.25);
+  }
+
+  .glass-select {
+    background-image: linear-gradient(
+      45deg,
+      transparent 50%,
+      rgb(var(--lg-text-muted) / 0.7) 50%
+    ),
+      linear-gradient(
+        135deg,
+        rgb(var(--lg-text-muted) / 0.7) 50%,
+        transparent 50%
+      );
+    background-position:
+      calc(100% - 18px) calc(50% - 2px),
+      calc(100% - 13px) calc(50% - 2px);
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 2rem;
+  }
+
+  /* ------------------------------------------------------------------------
+     .glass-pill — segmented control (OK/BAD/NEEDS_REVIEW)
+     ------------------------------------------------------------------------ */
+  .glass-pill {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 999px;
+    background-color: rgba(var(--lg-fill), 0.55);
+    backdrop-filter: blur(18px) saturate(170%);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    border: 1px solid rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+    box-shadow: var(--lg-shadow-rim);
+  }
+  .glass-pill__option {
+    position: relative;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgb(var(--lg-text-muted));
+    transition: color 200ms ease, transform 150ms ease;
+    cursor: pointer;
+  }
+  .glass-pill__option--active {
+    color: rgb(var(--lg-text));
+    background-image: linear-gradient(135deg, #f0abfc 0%, #7dd3fc 100%);
+    color: white;
+    box-shadow: 0 4px 12px -4px rgba(217, 70, 239, 0.4);
+  }
+  .glass-pill__option--ok.glass-pill__option--active {
+    background-image: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
+    box-shadow: 0 4px 12px -4px rgba(16, 185, 129, 0.45);
+  }
+  .glass-pill__option--bad.glass-pill__option--active {
+    background-image: linear-gradient(135deg, #f87171 0%, #f0abfc 100%);
+    box-shadow: 0 4px 12px -4px rgba(248, 113, 113, 0.45);
+  }
+  .glass-pill__option--review.glass-pill__option--active {
+    background-image: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
+    box-shadow: 0 4px 12px -4px rgba(251, 191, 36, 0.45);
+  }
+
+  /* ------------------------------------------------------------------------
+     Status underglow for event log / review row tints.
+     ------------------------------------------------------------------------ */
+  .underglow-ok {
+    box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35),
+      0 8px 24px -8px rgba(16, 185, 129, 0.35),
+      var(--lg-shadow-rim);
+  }
+  .underglow-bad {
+    box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.4),
+      0 8px 24px -8px rgba(220, 38, 38, 0.4),
+      var(--lg-shadow-rim);
+  }
+  .underglow-review {
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.45),
+      0 8px 24px -8px rgba(245, 158, 11, 0.4),
+      var(--lg-shadow-rim);
+  }
+
+  /* ------------------------------------------------------------------------
+     Glass progress bar — animated sheen sweeps across the filled portion.
+     ------------------------------------------------------------------------ */
+  .glass-progress {
+    position: relative;
+    height: 14px;
+    border-radius: 999px;
+    background-color: rgba(var(--lg-fill), 0.45);
+    overflow: hidden;
+    border: 1px solid rgba(var(--lg-stroke), var(--lg-stroke-alpha));
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .glass-progress__fill {
+    position: relative;
+    height: 100%;
+    background-image: linear-gradient(135deg, #f0abfc 0%, #7dd3fc 100%);
+    transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+  html.dark .glass-progress__fill {
+    background-image: linear-gradient(135deg, #a855f7 0%, #38bdf8 100%);
+  }
+  .glass-progress__fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 70%
+    );
+    animation: progress-sheen 2.4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glass-progress__fill::after {
+      animation: none;
+    }
+    .glass-button:hover::after {
+      animation: none;
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+     Page transition (used by App shell).
+     ------------------------------------------------------------------------ */
+  .page-fade {
+    animation: fade-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .page-fade {
+      animation: none;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-120%) skewX(-12deg);
+    }
+    100% {
+      transform: translateX(220%) skewX(-12deg);
+    }
+  }
+  @keyframes progress-sheen {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes aurora-drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    33% {
+      transform: translate3d(8%, -6%, 0) scale(1.08);
+    }
+    66% {
+      transform: translate3d(-6%, 8%, 0) scale(0.96);
+    }
+  }
+  @keyframes aurora-drift-2 {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(-10%, 10%, 0) scale(1.1);
+    }
+  }
+}

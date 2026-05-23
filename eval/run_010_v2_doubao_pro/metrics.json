@@ -1,0 +1,130 @@
+{
+  "run_id": "run_010_v2_doubao_pro",
+  "prompt_version": "2",
+  "model": "doubao-seed-2-0-pro-260215",
+  "samples": 10,
+  "matched": 10,
+  "mean_ssim": 0.36893254815201604,
+  "mean_phash": 31.6,
+  "pass_rate_ssim_50": 0.2,
+  "cost_usd_estimate": 1.2165050000000004,
+  "pairs": [
+    {
+      "sample": "1044246",
+      "candidate": "02_rId83_image80.png",
+      "expected": "04_rId85_image82.png",
+      "phash_distance": 34,
+      "ssim": 0.12203575256480288,
+      "notes": "conf=0.98 comp=1.00 iso=0.90 clar=0.92 bbox=(0, 2, 998, 825)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1494172",
+      "candidate": "03_rId79_image76.png",
+      "expected": "04_rId80_image77.png",
+      "phash_distance": 36,
+      "ssim": 0.3853522702489968,
+      "notes": "conf=0.88 comp=1.00 iso=0.65 clar=0.90 bbox=(304, 312, 578, 460)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1969989",
+      "candidate": "15_rId27_image24.png",
+      "expected": "20_rId32_image29.png",
+      "phash_distance": 26,
+      "ssim": 0.2451921607948888,
+      "notes": "conf=0.98 comp=1.00 iso=0.80 clar=0.90 bbox=(470, 153, 528, 231)  SEL_WRONG gold=12_rId24_image21.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "2423810",
+      "candidate": "07_rId11_image8.png",
+      "expected": "08_rId12_image9.png",
+      "phash_distance": 32,
+      "ssim": 0.2403767298325517,
+      "notes": "conf=0.95 comp=1.00 iso=0.70 clar=0.90 bbox=(350, 330, 546, 670)  SEL_WRONG gold=02_rId6_image3.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "3089225",
+      "candidate": "05_rId72_image69.png",
+      "expected": "08_rId75_image72.png",
+      "phash_distance": 34,
+      "ssim": 0.3129471346193038,
+      "notes": "conf=0.90 comp=1.00 iso=0.80 clar=0.90 bbox=(284, 305, 337, 348)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "4334451",
+      "candidate": "03_rId56_image53.png",
+      "expected": "06_rId59_image56.png",
+      "phash_distance": 30,
+      "ssim": 0.3541228098629475,
+      "notes": "conf=0.98 comp=1.00 iso=1.00 clar=1.00 bbox=(40, 610, 240, 845)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    },
+    {
+      "sample": "4338293",
+      "candidate": "06_rId39_image36.png",
+      "expected": "07_rId40_image37.png",
+      "phash_distance": 28,
+      "ssim": 0.19669370875191433,
+      "notes": "conf=0.98 comp=1.00 iso=0.70 clar=1.00 bbox=(72, 562, 201, 763)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    },
+    {
+      "sample": "4601531",
+      "candidate": "05_rId65_image62.png",
+      "expected": "06_rId66_image63.png",
+      "phash_distance": 34,
+      "ssim": 0.7479443775575815,
+      "notes": "conf=0.98 comp=1.00 iso=1.00 clar=1.00 bbox=(208, 491, 412, 628)  SEL_OK IoU=0.02",
+      "iou_vs_redbox": 0.017897609994095096,
+      "selection_correct": true
+    },
+    {
+      "sample": "4827580",
+      "candidate": "07_rId48_image45.png",
+      "expected": "08_rId49_image46.png",
+      "phash_distance": 28,
+      "ssim": 0.5852728251603313,
+      "notes": "conf=0.98 comp=1.00 iso=0.90 clar=0.95 bbox=(224, 151, 276, 184)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0020153973539101173,
+      "selection_correct": true
+    },
+    {
+      "sample": "6433801",
+      "candidate": "01_rId51_image48.png",
+      "expected": "02_rId52_image49.png",
+      "phash_distance": 34,
+      "ssim": 0.4993877121268419,
+      "notes": "conf=0.86 comp=1.00 iso=0.60 clar=0.50 bbox=(190, 467, 267, 551)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    }
+  ],
+  "selection_accuracy": 0.7142857142857143,
+  "selection_evaluated": 7,
+  "correct_selection": 5,
+  "bbox_iou_mean": 0.003982601469601043,
+  "bbox_iou_pass_50": 0.0,
+  "bbox_iou_scored": 5,
+  "json_retry_count": 0,
+  "completion_tokens_total": 63965,
+  "reasoning_tokens_total": 57555,
+  "mean_completion_tokens": 1015.3174603174604,
+  "mean_reasoning_tokens": 913.5714285714286,
+  "mean_latency_s": 23.32209369114467,
+  "call_count": 63,
+  "failed_count": 0,
+  "aborted": false,
+  "abort_reason": null,
+  "verify_enabled": false
+}

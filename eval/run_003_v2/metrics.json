@@ -1,0 +1,119 @@
+{
+  "run_id": "run_003_v2",
+  "prompt_version": "2",
+  "model": "gpt-5.4",
+  "samples": 10,
+  "matched": 10,
+  "mean_ssim": 0.34335564767120985,
+  "mean_phash": 27.6,
+  "pass_rate_ssim_50": 0.2,
+  "cost_usd_estimate": 0.34753750000000005,
+  "pairs": [
+    {
+      "sample": "1044246",
+      "candidate": "01_rId82_image79.png",
+      "expected": "04_rId85_image82.png",
+      "phash_distance": 26,
+      "ssim": 0.15245946521232503,
+      "notes": "conf=0.98 comp=0.97 iso=0.92 clar=0.86 bbox=(158, 520, 919, 774)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1494172",
+      "candidate": "03_rId79_image76.png",
+      "expected": "04_rId80_image77.png",
+      "phash_distance": 30,
+      "ssim": 0.18546060417157598,
+      "notes": "conf=0.98 comp=0.90 iso=0.86 clar=0.94 bbox=(115, 141, 199, 176)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "1969989",
+      "candidate": "04_rId16_image13.png",
+      "expected": "20_rId32_image29.png",
+      "phash_distance": 42,
+      "ssim": 0.14026275137896155,
+      "notes": "conf=0.99 comp=1.00 iso=1.00 clar=0.98 bbox=(0, 0, 21, 39)  SEL_WRONG gold=12_rId24_image21.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "2423810",
+      "candidate": "02_rId6_image3.png",
+      "expected": "08_rId12_image9.png",
+      "phash_distance": 28,
+      "ssim": 0.25612879980758163,
+      "notes": "conf=0.98 comp=1.00 iso=0.97 clar=0.99 bbox=(3, 2, 13, 22)  SEL_OK IoU=0.09",
+      "iou_vs_redbox": 0.08547008547008547,
+      "selection_correct": true
+    },
+    {
+      "sample": "3089225",
+      "candidate": "04_rId71_image68.png",
+      "expected": "08_rId75_image72.png",
+      "phash_distance": 30,
+      "ssim": 0.3594131295810874,
+      "notes": "conf=0.93 comp=0.98 iso=0.68 clar=0.90 bbox=(52, 39, 386, 344)  no_gold",
+      "iou_vs_redbox": null,
+      "selection_correct": null
+    },
+    {
+      "sample": "4334451",
+      "candidate": "04_rId57_image54.png",
+      "expected": "06_rId59_image56.png",
+      "phash_distance": 12,
+      "ssim": 0.43411738534627364,
+      "notes": "conf=0.99 comp=0.98 iso=0.99 clar=0.95 bbox=(14, 21, 252, 194)  SEL_WRONG gold=03_rId56_image53.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4338293",
+      "candidate": "06_rId39_image36.png",
+      "expected": "07_rId40_image37.png",
+      "phash_distance": 30,
+      "ssim": 0.15109006985810666,
+      "notes": "conf=0.99 comp=0.98 iso=0.93 clar=0.97 bbox=(30, 384, 237, 587)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    },
+    {
+      "sample": "4601531",
+      "candidate": "04_rId64_image61.png",
+      "expected": "06_rId66_image63.png",
+      "phash_distance": 12,
+      "ssim": 0.6834261973599337,
+      "notes": "conf=0.99 comp=0.98 iso=0.91 clar=0.96 bbox=(13, 16, 259, 96)  SEL_WRONG gold=05_rId65_image62.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "4827580",
+      "candidate": "02_rId43_image40.png",
+      "expected": "08_rId49_image46.png",
+      "phash_distance": 30,
+      "ssim": 0.3737926542900533,
+      "notes": "conf=0.98 comp=1.00 iso=0.92 clar=0.97 bbox=(0, 0, 52, 22)  SEL_WRONG gold=07_rId48_image45.png IoU=n/a (wrong evidence)",
+      "iou_vs_redbox": null,
+      "selection_correct": false
+    },
+    {
+      "sample": "6433801",
+      "candidate": "01_rId51_image48.png",
+      "expected": "02_rId52_image49.png",
+      "phash_distance": 36,
+      "ssim": 0.6974054197061997,
+      "notes": "conf=0.92 comp=0.85 iso=0.62 clar=0.55 bbox=(379, 635, 972, 826)  SEL_OK IoU=0.00",
+      "iou_vs_redbox": 0.0,
+      "selection_correct": true
+    }
+  ],
+  "selection_accuracy": 0.42857142857142855,
+  "selection_evaluated": 7,
+  "correct_selection": 3,
+  "bbox_iou_mean": 0.02849002849002849,
+  "bbox_iou_pass_50": 0.0,
+  "bbox_iou_scored": 3
+}

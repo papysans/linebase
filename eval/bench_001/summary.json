@@ -1,0 +1,29 @@
+{
+  "prompt_version": "2",
+  "cumulative_cost_usd": 0.6518975,
+  "completed": 1,
+  "total": 7,
+  "rows": [
+    {
+      "model": "gpt-5.5",
+      "provider": "openai",
+      "selection_acc": 0.2857142857142857,
+      "selection_correct": 2,
+      "selection_evaluated": 7,
+      "mean_iou": 0.0,
+      "iou_pass_50": 0.0,
+      "iou_scored": 2,
+      "mean_ssim": 0.403251873422607,
+      "n_correct": 2,
+      "total_cost_usd": 0.6518975,
+      "mean_latency_s": 13.23896216173641,
+      "mean_completion_tokens": 490.9672131147541,
+      "mean_reasoning_tokens": 0.0,
+      "json_retry_count": 0,
+      "call_count": 61,
+      "failed_count": 2,
+      "aborted": false,
+      "abort_reason": null
+    }
+  ]
+}

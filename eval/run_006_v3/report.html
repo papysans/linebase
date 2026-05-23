@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>linebase eval run_006_v3</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 20px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+  tr.bad { background: #fee; }
+  tr.ok { background: #efe; }
+  .summary { background: #f5f5f5; padding: 12px; margin-bottom: 12px; }
+  .secondary { color: #888; font-size: 11px; }
+  .dim { color: #aaa; }
+  .ok-mark { color: #1a7f1a; font-weight: 600; }
+  .bad-mark { color: #b00020; font-weight: 600; }
+</style>
+<h1>linebase eval — run_006_v3</h1>
+<div class="summary">
+  prompt=3 model=Qwen/Qwen3-VL-30B-A3B-Instruct samples=10 matched=9<br>
+  <strong>selection / bbox-IoU are primary;</strong> SSIM/pHash are secondary sanity checks.<br>
+  <span class="secondary">mean_ssim=0.302 mean_phash=29.4 pass_rate@SSIM>=0.5=10%</span><br>
+  est_cost=$0.453
+</div>
+<table>
+  <tr>
+    <th>sample</th><th>mine</th><th>expected</th>
+    <th>selection</th><th>IoU(red-box)</th>
+    <th class="secondary">pHash</th><th class="secondary">SSIM</th>
+    <th>notes</th>
+  </tr>
+  <tr class='bad'><td>1044246</td><td><img src='./crops/1044246__mine.png' style='max-height:160px'></td><td><img src='./crops/1044246__expected.png' style='max-height:160px'></td><td><span class='dim'>n/a</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>26</td><td class='secondary'>0.179</td><td>conf=0.98 comp=0.95 iso=0.90 clar=0.85 bbox=(64, 195, 792, 604)  no_gold</td></tr><tr class='bad'><td>1494172</td><td><img src='./crops/1494172__mine.png' style='max-height:160px'></td><td><img src='./crops/1494172__expected.png' style='max-height:160px'></td><td><span class='dim'>n/a</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>24</td><td class='secondary'>0.401</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.90 bbox=(368, 14, 638, 964)  no_gold</td></tr><tr class='bad'><td>1969989</td><td><img src='./crops/1969989__mine.png' style='max-height:160px'></td><td><img src='./crops/1969989__expected.png' style='max-height:160px'></td><td><span class='bad-mark'>WRONG</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>26</td><td class='secondary'>0.204</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.95 bbox=(10, 10, 190, 980)  SEL_WRONG gold=12_rId24_image21.png IoU=n/a (wrong evidence)</td></tr><tr class='ok'><td>2423810</td><td><img src='./crops/2423810__mine.png' style='max-height:160px'></td><td><img src='./crops/2423810__expected.png' style='max-height:160px'></td><td><span class='ok-mark'>OK</span></td><td><span class='bad-mark'>0.01</span></td><td class='secondary'>28</td><td class='secondary'>0.304</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.95 bbox=(10, 10, 280, 890)  SEL_OK IoU=0.01</td></tr><tr class='bad'><td>3089225</td><td><img src='./crops/3089225__mine.png' style='max-height:160px'></td><td><img src='./crops/3089225__expected.png' style='max-height:160px'></td><td><span class='dim'>n/a</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>64</td><td class='secondary'>0.000</td><td>no LLM match</td></tr><tr class='bad'><td>4334451</td><td><img src='./crops/4334451__mine.png' style='max-height:160px'></td><td><img src='./crops/4334451__expected.png' style='max-height:160px'></td><td><span class='bad-mark'>WRONG</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>38</td><td class='secondary'>0.388</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.95 bbox=(362, 354, 684, 731)  SEL_WRONG gold=03_rId56_image53.png IoU=n/a (wrong evidence)</td></tr><tr class='bad'><td>4338293</td><td><img src='./crops/4338293__mine.png' style='max-height:160px'></td><td><img src='./crops/4338293__expected.png' style='max-height:160px'></td><td><span class='bad-mark'>WRONG</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>28</td><td class='secondary'>0.079</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.90 bbox=(12, 12, 987, 987)  SEL_WRONG gold=06_rId39_image36.png IoU=n/a (wrong evidence)</td></tr><tr class='bad'><td>4601531</td><td><img src='./crops/4601531__mine.png' style='max-height:160px'></td><td><img src='./crops/4601531__expected.png' style='max-height:160px'></td><td><span class='bad-mark'>WRONG</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>10</td><td class='secondary'>0.658</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.95 bbox=(10, 50, 980, 930)  SEL_WRONG gold=05_rId65_image62.png IoU=n/a (wrong evidence)</td></tr><tr class='bad'><td>4827580</td><td><img src='./crops/4827580__mine.png' style='max-height:160px'></td><td><img src='./crops/4827580__expected.png' style='max-height:160px'></td><td><span class='bad-mark'>WRONG</span></td><td><span class='dim'>n/a</span></td><td class='secondary'>26</td><td class='secondary'>0.412</td><td>conf=0.98 comp=1.00 iso=0.90 clar=0.95 bbox=(10, 10, 988, 988)  SEL_WRONG gold=07_rId48_image45.png IoU=n/a (wrong evidence)</td></tr><tr class='ok'><td>6433801</td><td><img src='./crops/6433801__mine.png' style='max-height:160px'></td><td><img src='./crops/6433801__expected.png' style='max-height:160px'></td><td><span class='ok-mark'>OK</span></td><td><span class='bad-mark'>0.00</span></td><td class='secondary'>24</td><td class='secondary'>0.392</td><td>conf=0.92 comp=0.80 iso=0.80 clar=0.70 bbox=(187, 468, 794, 550)  SEL_OK IoU=0.00</td></tr>
+</table>

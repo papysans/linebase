@@ -1,0 +1,93 @@
+{
+  "run_id": "run_001",
+  "prompt_version": "conf=0.99",
+  "model": "gpt-5.4",
+  "samples": 10,
+  "matched": 10,
+  "mean_ssim": 0.3281242674497218,
+  "mean_phash": 30.6,
+  "pass_rate_ssim_50": 0.2,
+  "cost_usd_estimate": 0.2160750000000001,
+  "pairs": [
+    {
+      "sample": "1044246",
+      "candidate": "01_rId82_image79.png",
+      "expected": "04_rId85_image82.png",
+      "phash_distance": 32,
+      "ssim": 0.15956816289528625,
+      "notes": "conf=0.99 bbox=(168, 651, 892, 1018)"
+    },
+    {
+      "sample": "1494172",
+      "candidate": "01_rId77_image74.png",
+      "expected": "04_rId80_image77.png",
+      "phash_distance": 24,
+      "ssim": 0.1243299218633444,
+      "notes": "conf=0.98 bbox=(264, 114, 353, 207)"
+    },
+    {
+      "sample": "1969989",
+      "candidate": "01_rId13_image10.png",
+      "expected": "20_rId32_image29.png",
+      "phash_distance": 30,
+      "ssim": 0.18468495115745007,
+      "notes": "conf=0.99 bbox=(98, 42, 362, 437)"
+    },
+    {
+      "sample": "2423810",
+      "candidate": "01_rId5_image2.png",
+      "expected": "08_rId12_image9.png",
+      "phash_distance": 32,
+      "ssim": 0.2602553009342825,
+      "notes": "conf=0.99 bbox=(246, 311, 418, 505)"
+    },
+    {
+      "sample": "3089225",
+      "candidate": "05_rId72_image69.png",
+      "expected": "08_rId75_image72.png",
+      "phash_distance": 30,
+      "ssim": 0.3734544569258325,
+      "notes": "conf=0.98 bbox=(126, 341, 262, 406)"
+    },
+    {
+      "sample": "4334451",
+      "candidate": "01_rId54_image51.png",
+      "expected": "06_rId59_image56.png",
+      "phash_distance": 32,
+      "ssim": 0.22306287196126015,
+      "notes": "conf=0.98 bbox=(232, 141, 385, 286)"
+    },
+    {
+      "sample": "4338293",
+      "candidate": "06_rId39_image36.png",
+      "expected": "07_rId40_image37.png",
+      "phash_distance": 36,
+      "ssim": 0.21435600785126063,
+      "notes": "conf=0.99 bbox=(33, 384, 227, 579)"
+    },
+    {
+      "sample": "4601531",
+      "candidate": "03_rId63_image60.png",
+      "expected": "06_rId66_image63.png",
+      "phash_distance": 28,
+      "ssim": 0.682367198605322,
+      "notes": "conf=0.98 bbox=(341, 171, 483, 246)"
+    },
+    {
+      "sample": "4827580",
+      "candidate": "01_rId42_image39.png",
+      "expected": "08_rId49_image46.png",
+      "phash_distance": 32,
+      "ssim": 0.29009738493851783,
+      "notes": "conf=0.98 bbox=(276, 164, 425, 250)"
+    },
+    {
+      "sample": "6433801",
+      "candidate": "01_rId51_image48.png",
+      "expected": "02_rId52_image49.png",
+      "phash_distance": 30,
+      "ssim": 0.7690664173646613,
+      "notes": "conf=0.94 bbox=(362, 647, 490, 772)"
+    }
+  ]
+}
