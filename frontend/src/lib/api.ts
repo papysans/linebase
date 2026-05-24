@@ -80,6 +80,21 @@ export interface JobRow {
 export interface EvidenceMeta {
   found?: boolean | null;
   confidence?: number | null;
+  /** Per-evidence quality scalars from the LLM (0.0-1.0 each). Mirror the
+   *  top-level `best_*` shape so the row-detail modal can swap the metric
+   *  chips when the reviewer clicks a non-best thumbnail. */
+  clarity?: number | null;
+  completeness?: number | null;
+  isolation?: number | null;
+  /** Short LLM "why" string for this evidence — surfaced under the center
+   *  image when the reviewer selects this evidence in the strip. */
+  reason?: string | null;
+  /** Pixel bbox [x1, y1, x2, y2] for THIS evidence (not the chosen-best one).
+   *  Lets every thumbnail in the strip render its own overlay, and lets the
+   *  center image switch overlay when the reviewer picks a sibling. Null
+   *  when the LLM didn't return a bbox (rare — `found: true` without bbox
+   *  is treated as malformed by the matcher). */
+  bbox?: [number, number, number, number] | null;
   /** Verify-loop outcome: True = verify accepted the bbox, False = rejected,
    *  null/undefined = verify was disabled or the call hasn't happened yet. */
   verified?: boolean | null;

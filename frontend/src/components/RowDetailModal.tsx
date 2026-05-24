@@ -9,16 +9,27 @@
  * evidence image. We measure the rendered image dimensions on load and scale
  * the LLM bbox (which is in original pixel coords) to display coords.
  *
+ * Per-evidence inspector (2026-05-24)
+ * - Every thumbnail in the evidence strip renders ITS OWN bbox overlay (scaled
+ *   to the thumb size) + a status badge in the corner. Previously only the
+ *   chosen-best evidence got an overlay, leaving the other 19 in a 20-evidence
+ *   row visually unannotated even though the LLM had returned a bbox for each
+ *   `found=true` evidence. The data was always there in `match_meta` — this is
+ *   purely a render gap.
+ * - Clicking a thumbnail swaps the center image AND the metric chips AND the
+ *   "reason" line so the modal becomes a true per-evidence inspector instead
+ *   of a chosen-best-only viewer.
+ *
  * Implementation notes
  * - Uses createPortal so the modal isn't trapped by the table's stacking
  *   context. Closes on Esc + outside-click.
- * - No external modal library — ~250 lines of pure React. Tradeoff: no focus
+ * - No external modal library — ~350 lines of pure React. Tradeoff: no focus
  *   trap and no scroll-lock helpers; acceptable for a single-user local tool.
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RotateCcw, X } from "lucide-react";
-import type { JobRow } from "@/lib/api";
+import type { EvidenceMeta, JobRow } from "@/lib/api";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassPill, type PillStatus } from "@/components/GlassPill";
 import { GlassInput } from "@/components/GlassInput";
@@ -55,11 +66,23 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
     naturalH: number;
   } | null>(null);
 
-  // Per-evidence bbox lookup: only the chosen-best evidence has a bbox on
-  // the wire (`best_bbox`). If the user swaps to another evidence in the
-  // strip, we have no bbox for it — the overlay simply doesn't render.
-  const activeBbox =
-    activeUrl === row.best_evidence_url ? row.best_bbox || null : null;
+  // Per-evidence meta lookup. Whatever URL is currently centered, we pull its
+  // bbox + metrics + reason from `match_meta` so the modal stays in sync.
+  // Falls back to the top-level `best_*` fields when `match_meta` is missing
+  // (older rows from before the projection was added).
+  const meta: EvidenceMeta | undefined = row.match_meta?.[activeUrl];
+  const isBest = activeUrl === row.best_evidence_url;
+  const activeBbox: [number, number, number, number] | null =
+    (meta?.bbox as [number, number, number, number] | undefined | null) ??
+    (isBest ? row.best_bbox || null : null);
+  const activeReason: string | null = (meta?.reason ?? null) || (isBest ? row.best_reason ?? null : null);
+  const activeConfidence: number | null | undefined = meta?.confidence ?? (isBest ? row.best_confidence : null);
+  const activeClarity: number | null | undefined = meta?.clarity ?? (isBest ? row.best_clarity : null);
+  const activeCompleteness: number | null | undefined =
+    meta?.completeness ?? (isBest ? row.best_completeness : null);
+  const activeIsolation: number | null | undefined = meta?.isolation ?? (isBest ? row.best_isolation : null);
+  const activeFallbackModel: string | null | undefined =
+    meta?.fallback_model ?? (isBest ? row.best_fallback_model : null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -161,9 +184,11 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
           <Column
             title="使用证据"
             subtitle={
-              activeUrl === row.best_evidence_url
+              isBest
                 ? "LLM 选中（含 bbox）"
-                : "其他证据"
+                : meta?.found
+                  ? "其他证据（含 bbox）"
+                  : "其他证据"
             }
           >
             {activeUrl ? (
@@ -212,48 +237,43 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
 
         {/* footer */}
         <div className="flex flex-col gap-3 border-t border-white/30 pt-3 dark:border-white/10">
-          {row.best_reason && (
+          {activeReason && (
             <p className="text-sm text-slate-700 dark:text-slate-300">
               <span className="mr-2 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                reason
+                reason{isBest ? "" : "（当前证据）"}
               </span>
-              {row.best_reason}
+              {activeReason}
             </p>
           )}
-          <Metrics row={row} />
+          <ActiveMetrics
+            confidence={activeConfidence}
+            clarity={activeClarity}
+            completeness={activeCompleteness}
+            isolation={activeIsolation}
+            fallbackModel={activeFallbackModel}
+          />
 
-          {/* other evidences strip */}
+          {/* other evidences strip — every thumb shows its own bbox + status badge */}
           {row.evidence_urls.length > 1 && (
             <div>
               <div className="mb-1.5 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                其他证据 ({row.evidence_urls.length})
+                所有证据 ({row.evidence_urls.length}) · 点击切换中间大图
               </div>
               <div className="flex flex-wrap gap-2">
                 {row.evidence_urls.map((u, i) => {
                   const isActive = u === activeUrl;
-                  const isBest = u === row.best_evidence_url;
+                  const isThisBest = u === row.best_evidence_url;
+                  const thumbMeta: EvidenceMeta | undefined = row.match_meta?.[u];
                   return (
-                    <button
+                    <EvidenceThumb
                       key={i}
-                      type="button"
+                      url={u}
+                      index={i}
+                      meta={thumbMeta}
+                      isActive={isActive}
+                      isBest={isThisBest}
                       onClick={() => setActiveUrl(u)}
-                      title={u}
-                      className={cn(
-                        "h-16 w-16 overflow-hidden rounded-xl border bg-white/40 backdrop-blur-md transition dark:bg-white/5",
-                        isActive
-                          ? "border-aurora-magenta shadow-[0_0_0_2px_rgba(240,171,252,0.6)]"
-                          : isBest
-                            ? "border-aurora-cyan/70"
-                            : "border-white/40 dark:border-white/10",
-                      )}
-                    >
-                      <img
-                        src={`/api/img?u=${encodeURIComponent(u)}`}
-                        alt={`ev${i + 1}`}
-                        loading="lazy"
-                        className="h-full w-full object-contain"
-                      />
-                    </button>
+                    />
                   );
                 })}
               </div>
@@ -297,6 +317,134 @@ function scaleBbox(
     width: Math.max(2, (x2 - x1) * sx),
     height: Math.max(2, (y2 - y1) * sy),
   };
+}
+
+/**
+ * One evidence thumbnail in the strip. Renders the image + its own bbox
+ * overlay (scaled to thumb size) + a status badge in the top-right corner.
+ *
+ * The bbox overlay uses the same math as the center image (`scaleBbox`), but
+ * we measure on a per-thumb basis since each evidence has different
+ * naturalW/H. The badge encodes four cases:
+ *   - sanity_rejected → red "空裁"
+ *   - verified === false → amber "验证拒 <fit>"
+ *   - found === true → green "✓ <conf>"
+ *   - found === false → gray "✗"
+ */
+function EvidenceThumb({
+  url,
+  index,
+  meta,
+  isActive,
+  isBest,
+  onClick,
+}: {
+  url: string;
+  index: number;
+  meta: EvidenceMeta | undefined;
+  isActive: boolean;
+  isBest: boolean;
+  onClick: () => void;
+}) {
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [box, setBox] = useState<{
+    w: number;
+    h: number;
+    naturalW: number;
+    naturalH: number;
+  } | null>(null);
+
+  function measure() {
+    const el = imgRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setBox({
+      w: rect.width,
+      h: rect.height,
+      naturalW: el.naturalWidth || 1,
+      naturalH: el.naturalHeight || 1,
+    });
+  }
+
+  const bbox = (meta?.bbox as [number, number, number, number] | undefined | null) ?? null;
+  const overlay = bbox && box ? scaleBbox(bbox, box) : null;
+
+  // Status badge classification — first match wins.
+  let badge: { text: string; cls: string; title?: string } | null = null;
+  if (meta?.sanity_rejected) {
+    badge = {
+      text: "空裁",
+      cls: "bg-red-500/90 text-white",
+      title: `sanity_rejected: ${meta.sanity_rejected}`,
+    };
+  } else if (meta?.verified === false) {
+    badge = {
+      text: `验证拒${meta.fit ? " " + meta.fit : ""}`,
+      cls: "bg-amber-500/90 text-white",
+      title: meta.verify_reason ?? "verify rejected",
+    };
+  } else if (meta?.error) {
+    badge = {
+      text: "错",
+      cls: "bg-red-500/90 text-white",
+      title: meta.error,
+    };
+  } else if (meta?.found) {
+    const conf = typeof meta.confidence === "number" ? meta.confidence : null;
+    badge = {
+      text: conf != null ? `✓ ${conf.toFixed(2)}` : "✓",
+      cls: "bg-emerald-500/90 text-white",
+    };
+  } else if (meta?.found === false) {
+    badge = { text: "✗", cls: "bg-slate-500/80 text-white" };
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={url}
+      className={cn(
+        "relative h-24 w-24 overflow-hidden rounded-xl border bg-white/40 backdrop-blur-md transition dark:bg-white/5",
+        isActive
+          ? "border-aurora-magenta shadow-[0_0_0_2px_rgba(240,171,252,0.6)]"
+          : isBest
+            ? "border-aurora-cyan/70"
+            : "border-white/40 dark:border-white/10",
+      )}
+    >
+      <img
+        ref={imgRef}
+        src={`/api/img?u=${encodeURIComponent(url)}`}
+        alt={`ev${index + 1}`}
+        loading="lazy"
+        onLoad={measure}
+        className="h-full w-full object-contain"
+      />
+      {overlay && (
+        <div
+          className="pointer-events-none absolute border border-aurora-magenta/95"
+          style={{
+            left: overlay.left,
+            top: overlay.top,
+            width: overlay.width,
+            height: overlay.height,
+          }}
+        />
+      )}
+      {badge && (
+        <span
+          className={cn(
+            "pointer-events-none absolute right-1 top-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold leading-none shadow-sm",
+            badge.cls,
+          )}
+          title={badge.title}
+        >
+          {badge.text}
+        </span>
+      )}
+    </button>
+  );
 }
 
 function Column({
@@ -345,15 +493,33 @@ function Empty({ label }: { label: string }) {
   );
 }
 
-function Metrics({ row }: { row: JobRow }) {
+/**
+ * Metric chips for the currently-active evidence (not always the
+ * chosen-best). Falls back to nothing when the evidence has no metrics yet
+ * (e.g. pending row, or evidence the LLM returned `found=false` for without
+ * scoring sub-metrics).
+ */
+function ActiveMetrics({
+  confidence,
+  clarity,
+  completeness,
+  isolation,
+  fallbackModel,
+}: {
+  confidence: number | null | undefined;
+  clarity: number | null | undefined;
+  completeness: number | null | undefined;
+  isolation: number | null | undefined;
+  fallbackModel: string | null | undefined;
+}) {
   const items: { label: string; value: number | null | undefined }[] = [
-    { label: "conf", value: row.best_confidence },
-    { label: "clar", value: row.best_clarity },
-    { label: "comp", value: row.best_completeness },
-    { label: "iso", value: row.best_isolation },
+    { label: "conf", value: confidence },
+    { label: "clar", value: clarity },
+    { label: "comp", value: completeness },
+    { label: "iso", value: isolation },
   ];
   const present = items.filter((i) => i.value != null);
-  if (present.length === 0 && !row.best_fallback_model) return null;
+  if (present.length === 0 && !fallbackModel) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {present.map((i) => (
@@ -369,15 +535,15 @@ function Metrics({ row }: { row: JobRow }) {
           </span>
         </span>
       ))}
-      {row.best_fallback_model && (
+      {fallbackModel && (
         <span
           className="inline-flex items-center gap-1 rounded-full border border-amber-300/50 bg-amber-300/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 backdrop-blur-md dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-300"
-          title={`primary 模型拒绝 (< 28 px)，回落到 ${row.best_fallback_model}`}
+          title={`primary 模型拒绝 (< 28 px)，回落到 ${fallbackModel}`}
         >
           <span className="uppercase tracking-wider text-amber-600 dark:text-amber-400">
             回落
           </span>
-          <span className="font-mono">{row.best_fallback_model}</span>
+          <span className="font-mono">{fallbackModel}</span>
         </span>
       )}
     </div>

@@ -27,32 +27,38 @@ class ModelOption:
 
 MODEL_WHITELIST: tuple[ModelOption, ...] = (
     ModelOption(
+        id="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        provider="siliconflow",
+        label="Qwen3-VL 30B A3B (默认 · 便宜 · SiliconFlow)",
+        notes=(
+            "default since 2026-05-24 after Ark account hit overdue. "
+            "$0.29/$1.00 per 1M token. MoE; rejects images < 28 px → "
+            "auto-falls back to gpt-5.5 in pipeline_runner._one_evidence."
+        ),
+    ),
+    ModelOption(
         id="gpt-5.5",
         provider="openai",
-        label="GPT-5.5 (默认 · 真实世界最稳 · 建议配合二次校验)",
+        label="GPT-5.5 (准但贵 · 真实世界稳)",
         notes=(
-            "finished 6/6 on the v2 night batch; default since 2026-05-23. "
-            "Known brand-recognition-shortcut bug: returned conf=0.99 on a "
-            "Heat fireball when the registered TM was a basketball-player "
-            "silhouette (job 2a2e801827dc457b row 79). Pair with verify_loop=1 "
-            "to mitigate."
+            "finished 6/6 on the v2 night batch; was default 2026-05-23 → "
+            "2026-05-24. Real cost ~$0.45/row with verify_loop. Known "
+            "brand-recognition-shortcut bug: returned conf=0.99 on a Heat "
+            "fireball when the registered TM was a basketball-player "
+            "silhouette (job 2a2e801827dc457b row 79). Pair with "
+            "verify_loop=1 to mitigate."
         ),
     ),
     ModelOption(
         id="doubao-seed-2-0-pro-260215",
         provider="ark",
-        label="Doubao Seed 2.0 Pro (fixture 最准 · 真实数据偶发 stall)",
+        label="Doubao Seed 2.0 Pro (Ark 账户需充值后可用 · fixture 最准)",
         notes=(
             "71% sel-acc bench winner BUT stalled mid-batch on a real-world "
-            "9-evidence row 2026-05-23; per-call timeout now caps the blast "
-            "radius. See llm-gotchas.md before promoting to default."
+            "9-evidence row 2026-05-23 and Ark account is currently overdue "
+            "(2026-05-24). Per-call timeout caps the blast radius. See "
+            "llm-gotchas.md before promoting to default."
         ),
-    ),
-    ModelOption(
-        id="Qwen/Qwen3-VL-30B-A3B-Instruct",
-        provider="siliconflow",
-        label="Qwen3-VL 30B A3B (快 · 小图回落)",
-        notes="MoE; rejects images < 28 px (auto-falls back to gpt-5.5)",
     ),
     ModelOption(
         id="Qwen/Qwen3-VL-32B-Instruct",
@@ -63,10 +69,11 @@ MODEL_WHITELIST: tuple[ModelOption, ...] = (
     ModelOption(
         id="doubao-seed-2-0-mini-260428",
         provider="ark",
-        label="Doubao Seed 2.0 Mini (国产·快 · 真实数据偶发 stall)",
+        label="Doubao Seed 2.0 Mini (Ark 账户需充值后可用)",
         notes=(
             "thinking model; occasional 150 s timeouts. Shares the multi-"
-            "evidence stall behavior of the pro variant — see llm-gotchas.md."
+            "evidence stall behavior of the pro variant — see llm-gotchas.md. "
+            "Ark account is currently overdue (2026-05-24)."
         ),
     ),
     ModelOption(

@@ -211,14 +211,31 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
     # sibling evidence was skipped over (e.g. "verified=False fit=wrong" or
     # "sanity_rejected=crop_mostly_blank"). Schema deliberately small — only
     # the fields the modal renders. Empty dict when no meta yet (pending row).
+    #
+    # bbox + reason + clarity/completeness/isolation added 2026-05-24 so the
+    # modal can overlay each evidence's own bbox + render that evidence's
+    # metrics when the user clicks a non-best thumbnail (was previously stuck
+    # showing only the chosen-best's bbox + metrics).
     match_meta: dict[str, dict[str, Any]] = {}
     if isinstance(meta, dict):
         for url, m in meta.items():
             if not isinstance(m, dict):
                 continue
+            raw_bbox = m.get("bbox")
+            ev_bbox: list[float] | None = None
+            if isinstance(raw_bbox, (list, tuple)) and len(raw_bbox) == 4:
+                try:
+                    ev_bbox = [float(x) for x in raw_bbox]
+                except (TypeError, ValueError):
+                    ev_bbox = None
             match_meta[url] = {
                 "found": m.get("found"),
                 "confidence": _f(m.get("confidence")),
+                "clarity": _f(m.get("clarity")),
+                "completeness": _f(m.get("completeness")),
+                "isolation": _f(m.get("isolation")),
+                "reason": m.get("reason"),
+                "bbox": ev_bbox,
                 "verified": m.get("verified"),
                 "fit": m.get("fit"),
                 "verify_reason": m.get("verify_reason"),
