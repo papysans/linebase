@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Filter, Maximize2, RotateCcw } from "lucide-react";
-import { api, type JobRow } from "@/lib/api";
+import { api, type JobRow, type ModelOption } from "@/lib/api";
 import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassCard } from "@/components/GlassCard";
@@ -10,6 +10,7 @@ import { GlassInput, GlassSelect } from "@/components/GlassInput";
 import { GlassPill, type PillStatus } from "@/components/GlassPill";
 import { GlassSpinner } from "@/components/GlassSpinner";
 import { RowDetailModal } from "@/components/RowDetailModal";
+import { RowRerunDialog } from "@/components/RowRerunDialog";
 import { cn } from "@/lib/cn";
 
 type Filter = "" | "ok" | "bad" | "needs_review" | "failed";
@@ -31,6 +32,10 @@ export function ReviewPage() {
   // bound to the latest server-side state of that row (e.g., notes saved by
   // the inline pill update inside the modal show up immediately on the card).
   const [detailRowId, setDetailRowId] = useState<number | null>(null);
+  // ID of the row whose per-row rerun dialog is open. Separate state from
+  // detail modal so the user can open one without closing the other (the
+  // modal also surfaces a 🔄 button that triggers the same dialog).
+  const [rerunRowId, setRerunRowId] = useState<number | null>(null);
 
   // Sync URL jobId into session — covers deep-link / shared URL / refresh.
   useEffect(() => {
@@ -64,6 +69,31 @@ export function ReviewPage() {
   const rerun = useMutation({
     mutationFn: () => api.rerun(jobId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["rows", jobId] }),
+  });
+
+  const rerunRow = useMutation({
+    mutationFn: ({
+      rowId,
+      verify,
+      model,
+    }: {
+      rowId: number;
+      verify?: boolean;
+      model?: string | null;
+    }) => api.rerunRow(jobId, rowId, { verify, model }),
+    onSuccess: () => {
+      // Refetch both rows and job so the model + verify_loop labels update.
+      qc.invalidateQueries({ queryKey: ["rows", jobId] });
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+      setRerunRowId(null);
+    },
+  });
+
+  // Models list — fetched once for the rerun dialog dropdown. Same endpoint
+  // ConfigurePage uses, so the cache key is shared.
+  const { data: modelsResp } = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api.listModels(),
   });
 
   return (
@@ -138,6 +168,7 @@ export function ReviewPage() {
               setStatus.mutate({ rowId: r.id, status: s, notes: n })
             }
             onOpenDetail={() => setDetailRowId(r.id)}
+            onOpenRerun={() => setRerunRowId(r.id)}
           />
         ))}
         {rows && rows.length === 0 && (
@@ -160,6 +191,24 @@ export function ReviewPage() {
             onSet={(s, n) =>
               setStatus.mutate({ rowId: r.id, status: s, notes: n })
             }
+            onOpenRerun={() => setRerunRowId(r.id)}
+          />
+        );
+      })()}
+
+      {rerunRowId !== null && rows && (() => {
+        const r = rows.find((x) => x.id === rerunRowId);
+        if (!r) return null;
+        return (
+          <RowRerunDialog
+            row={r}
+            models={modelsResp?.whitelist as ModelOption[] | undefined}
+            defaultModel={modelsResp?.default}
+            pending={rerunRow.isPending}
+            onClose={() => setRerunRowId(null)}
+            onSubmit={(opts) =>
+              rerunRow.mutate({ rowId: r.id, ...opts })
+            }
           />
         );
       })()}
@@ -178,10 +227,12 @@ function ReviewRow({
   row,
   onSet,
   onOpenDetail,
+  onOpenRerun,
 }: {
   row: JobRow;
   onSet: (status: PillStatus, notes?: string) => void;
   onOpenDetail: () => void;
+  onOpenRerun: () => void;
 }) {
   const [notes, setNotes] = useState(row.notes ?? "");
   const current = (row.human_status ?? null) as PillStatus | null;
@@ -208,6 +259,16 @@ function ReviewRow({
           className="mt-2 !px-2 !py-1 text-[11px]"
         >
           查看详情
+        </GlassButton>
+        <GlassButton
+          variant="ghost"
+          size="sm"
+          onClick={onOpenRerun}
+          leadingIcon={<RotateCcw size={12} />}
+          className="mt-1.5 !px-2 !py-1 text-[11px]"
+          title="重跑此行（可选二次校验 / 模型覆盖）"
+        >
+          重跑
         </GlassButton>
       </div>
 

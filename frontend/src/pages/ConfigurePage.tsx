@@ -62,6 +62,11 @@ export function ConfigurePage() {
   // "" means "use server default" — submitted as `undefined` model field.
   const [modelChoice, setModelChoice] = useState<string>("");
   const [customModel, setCustomModel] = useState<string>("");
+  // Opt-in verify-loop. Off by default — doubles per-row cost. Recommended
+  // when picking gpt-5.5 because that model has been observed to take brand-
+  // recognition shortcuts (Heat fireball labeled as "NBA branding" when the
+  // registered TM was the Jerry-West silhouette).
+  const [verifyLoop, setVerifyLoop] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -136,6 +141,7 @@ export function ConfigurePage() {
         sample_params: { n: sampleN },
         threshold,
         model: modelToSend ?? null,
+        verify_loop: verifyLoop,
       });
       setSession({ uploadId, jobId: job.id });
       navigate(`/run/${job.id}`);
@@ -214,7 +220,30 @@ export function ConfigurePage() {
 
           <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
             Qwen3-VL 在小于 28 px 的图上会自动回落到 gpt-5.5。
+            {modelChoice === "gpt-5.5" && (
+              <span className="ml-1 text-amber-700 dark:text-amber-300">
+                gpt-5.5 偶有品牌识别捷径（误把 Heat 火球当成 NBA 球员剪影），
+                建议配合二次校验。
+              </span>
+            )}
           </p>
+
+          <label className="flex items-start gap-2 rounded-2xl border border-white/40 bg-white/30 p-3 text-sm dark:border-white/10 dark:bg-white/5">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-aurora-magenta"
+              checked={verifyLoop}
+              onChange={(e) => setVerifyLoop(e.target.checked)}
+            />
+            <div className="space-y-0.5">
+              <div className="font-medium text-slate-800 dark:text-slate-100">
+                二次校验（每个候选裁完后让模型再确认一次，更准但成本翻倍）
+              </div>
+              <div className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                推荐用于 gpt-5.5 —— 能拦截"品牌识别捷径"导致的假阳性。
+              </div>
+            </div>
+          </label>
 
           <div className="flex items-center gap-2 pt-2">
             <Settings2 size={16} className="text-aurora-magenta" />

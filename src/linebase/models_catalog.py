@@ -29,8 +29,14 @@ MODEL_WHITELIST: tuple[ModelOption, ...] = (
     ModelOption(
         id="gpt-5.5",
         provider="openai",
-        label="GPT-5.5 (默认 · 真实世界最稳)",
-        notes="finished 6/6 on the v2 night batch; default since 2026-05-23",
+        label="GPT-5.5 (默认 · 真实世界最稳 · 建议配合二次校验)",
+        notes=(
+            "finished 6/6 on the v2 night batch; default since 2026-05-23. "
+            "Known brand-recognition-shortcut bug: returned conf=0.99 on a "
+            "Heat fireball when the registered TM was a basketball-player "
+            "silhouette (job 2a2e801827dc457b row 79). Pair with verify_loop=1 "
+            "to mitigate."
+        ),
     ),
     ModelOption(
         id="doubao-seed-2-0-pro-260215",

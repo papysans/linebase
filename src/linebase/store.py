@@ -6,9 +6,26 @@ import sqlite3
 import time
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Iterator
+
+
+def _build(cls, row_dict: dict[str, Any]):
+    """Build a dataclass instance from a sqlite Row dict, ignoring unknown keys.
+
+    Two scenarios this protects against:
+      1. Forward-compat: the DB has columns added by a newer code path; an
+         older interpreter in the same process should still be able to load
+         rows without TypeError on unexpected kwargs.
+      2. Backward-compat: a row predates a column the dataclass added with a
+         default — without this helper we'd have to remember to backfill or
+         re-create rows on every migration.
+    Loses no information vs `cls(**row_dict)` when the schema and dataclass
+    are in sync, which is the steady-state.
+    """
+    valid = {f.name for f in fields(cls)}
+    return cls(**{k: v for k, v in row_dict.items() if k in valid})
 
 DATA_DIR = Path(__file__).resolve().parents[2] / ".data"
 DB_PATH = DATA_DIR / "linebase.db"
@@ -103,6 +120,14 @@ def init_schema(db_path: Path = DB_PATH) -> None:
             conn.execute("ALTER TABLE job ADD COLUMN model TEXT")
         except sqlite3.OperationalError:
             pass
+        # Added 2026-05-24: opt-in "二次校验" flag. When 1, the pipeline runs
+        # `match_with_verify` (extra LLM call per evidence to confirm the crop)
+        # instead of the single-shot `match_logo_in_photo`. Persisted on the
+        # job so the per-row /rerun endpoint can override it transiently.
+        try:
+            conn.execute("ALTER TABLE job ADD COLUMN verify_loop INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
 
 _singleton: sqlite3.Connection | None = None
@@ -144,7 +169,7 @@ def insert_upload(filename: str, size: int, path: str) -> Upload:
 
 def get_upload(upload_id: str) -> Upload | None:
     row = db().execute("SELECT * FROM upload WHERE id=?", (upload_id,)).fetchone()
-    return Upload(**dict(row)) if row else None
+    return _build(Upload, dict(row)) if row else None
 
 
 def set_upload_sheets(upload_id: str, sheets_json: str) -> None:
@@ -173,6 +198,7 @@ class Job:
     started_at: float | None
     finished_at: float | None
     model: str | None = None  # added 2026-05-24: per-job LLM override; NULL → use settings.model
+    verify_loop: int = 0  # added 2026-05-24: 1 → run the verify-loop on every evidence; 0 → single-shot match
 
 
 def insert_job(
@@ -185,22 +211,23 @@ def insert_job(
     sample_kind: str,
     sample_params: dict[str, Any],
     model: str | None = None,
+    verify_loop: int = 0,
 ) -> Job:
     jid = new_id()
     now = time.time()
     db().execute(
         """INSERT INTO job(id, upload_id, sheet_name, logo_column, evidence_column, appno_column,
-           threshold, sample_kind, sample_params_json, status, created_at, model)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+           threshold, sample_kind, sample_params_json, status, created_at, model, verify_loop)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (jid, upload_id, sheet_name, logo_column, evidence_column, appno_column,
-         threshold, sample_kind, json.dumps(sample_params), "pending", now, model),
+         threshold, sample_kind, json.dumps(sample_params), "pending", now, model, int(bool(verify_loop))),
     )
     return get_job(jid)  # type: ignore[return-value]
 
 
 def get_job(job_id: str) -> Job | None:
     row = db().execute("SELECT * FROM job WHERE id=?", (job_id,)).fetchone()
-    return Job(**dict(row)) if row else None
+    return _build(Job, dict(row)) if row else None
 
 
 def update_job(job_id: str, **fields: Any) -> None:
@@ -218,7 +245,7 @@ def list_jobs(limit: int = 50) -> list[Job]:
         "SELECT * FROM job ORDER BY created_at DESC LIMIT ?",
         (max(1, int(limit)),),
     ).fetchall()
-    return [Job(**dict(r)) for r in rows]
+    return [_build(Job, dict(r)) for r in rows]
 
 
 # --- JobRow -----------------------------------------------------------------
@@ -253,7 +280,7 @@ def insert_job_row(job_id: str, row_index: int, appno: str | None, logo_url: str
 
 def get_job_row(row_id: int) -> JobRow | None:
     row = db().execute("SELECT * FROM job_row WHERE id=?", (row_id,)).fetchone()
-    return JobRow(**dict(row)) if row else None
+    return _build(JobRow, dict(row)) if row else None
 
 
 def list_job_rows(job_id: str, status: str | None = None) -> list[JobRow]:
@@ -261,7 +288,7 @@ def list_job_rows(job_id: str, status: str | None = None) -> list[JobRow]:
         rows = db().execute("SELECT * FROM job_row WHERE job_id=? AND status=? ORDER BY row_index", (job_id, status)).fetchall()
     else:
         rows = db().execute("SELECT * FROM job_row WHERE job_id=? ORDER BY row_index", (job_id,)).fetchall()
-    return [JobRow(**dict(r)) for r in rows]
+    return [_build(JobRow, dict(r)) for r in rows]
 
 
 def update_job_row(row_id: int, **fields: Any) -> None:

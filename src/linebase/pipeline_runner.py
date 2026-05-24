@@ -23,6 +23,8 @@ from typing import Any, AsyncIterator
 
 import os
 
+from PIL import Image, ImageStat
+
 from linebase import store
 from linebase.config import Settings
 from linebase.crop import crop_to_bbox
@@ -134,6 +136,10 @@ def _job_to_dict(job: store.Job) -> dict[str, Any]:
     # by a migration and the row predates it, asdict() may still report None —
     # surface it as `model` so the frontend can always render a value.
     d["model"] = getattr(job, "model", None)
+    # verify_loop is INTEGER in SQLite; project to a bool for the JSON wire so
+    # frontend can use it directly in conditionals without 0/1 vs true/false
+    # ambiguity.
+    d["verify_loop"] = bool(getattr(job, "verify_loop", 0))
     return d
 
 
@@ -222,6 +228,62 @@ def _is_small_image_rejection(exc: BaseException) -> bool:
     return any(marker in msg for marker in _QWEN_SMALL_IMAGE_MARKERS)
 
 
+# Post-crop sanity-check thresholds. Added 2026-05-24 after the 74677567 row
+# in job 2a2e801827dc457b yielded a `found=true conf=0.98` bbox that landed in
+# a white margin of the evidence — the resulting crop file was visibly blank
+# but the row still got marked `ok`. We now reject crops that are either
+# absurdly tiny (< 0.5% of evidence area) or mostly featureless white space
+# (mean brightness > 240 on 0-255 AND max per-channel stddev < 25).
+#
+# Bias is towards needs_review, not silent acceptance — see _process_row's
+# downgrade path.
+_SANITY_MIN_AREA_RATIO = 0.005
+_SANITY_BLANK_BRIGHTNESS = 240.0
+_SANITY_BLANK_MAX_STDDEV = 25.0
+
+
+def _crop_sanity_check(crop_path: Path, evidence_path: Path) -> str | None:
+    """Return a short rejection reason string when the crop looks bad, else None.
+
+    Rejection rules (in order):
+      1. crop_too_small  — area / evidence_area < 0.5% — bbox is microscopic.
+      2. crop_mostly_blank — high brightness + low contrast across all channels
+         means we cropped white/cream/featureless background, not a logo.
+
+    Both rules are intentionally loose; a true-positive logo crop will have
+    some darker strokes (low brightness) and structure (non-trivial stddev),
+    while a blank-margin crop has neither.
+    """
+    try:
+        with Image.open(crop_path) as img:
+            crop = img.convert("RGB")
+            cw, ch = crop.size
+            stat = ImageStat.Stat(crop)
+        with Image.open(evidence_path) as ev:
+            ew, eh = ev.size
+    except Exception as e:
+        # If we can't even open the crop, that's a different kind of failure;
+        # bubble it up as a sanity rejection so the row drops to needs_review.
+        return f"crop_open_failed: {e}"
+
+    if ew <= 0 or eh <= 0:
+        return None  # can't compute ratio; skip the area check rather than misfire
+    area_ratio = (cw * ch) / float(ew * eh)
+    if area_ratio < _SANITY_MIN_AREA_RATIO:
+        return f"crop_too_small (area_ratio={area_ratio:.4f})"
+
+    mean_r, mean_g, mean_b = stat.mean
+    std_r, std_g, std_b = stat.stddev
+    mean_brightness = (mean_r + mean_g + mean_b) / 3.0
+    max_std = max(std_r, std_g, std_b)
+    if (
+        mean_brightness > _SANITY_BLANK_BRIGHTNESS
+        and max_std < _SANITY_BLANK_MAX_STDDEV
+    ):
+        return f"crop_mostly_blank (brightness={mean_brightness:.0f}, std={max_std:.0f})"
+    return None
+
+
 async def _process_row(
     job: store.Job,
     row: store.JobRow,
@@ -238,6 +300,7 @@ async def _process_row(
     cost_delta = 0.0
     best: MatchResult | None = None
     best_evidence_path: Path | None = None
+    best_url: str | None = None
     crops: dict[str, str | None] = {}
     metas: dict[str, dict[str, Any]] = {}
 
@@ -247,7 +310,13 @@ async def _process_row(
         store.update_job_row(row.id, status="failed", notes=f"logo download failed: {e}")
         return 0.0, "failed"
 
-    use_verify = _verify_enabled()
+    # Verify-loop is opt-in at TWO levels:
+    #   - env LINEBASE_VERIFY=1 (process-wide default, set by deployments)
+    #   - per-job job.verify_loop=1 (set by ConfigurePage or the per-row rerun
+    #     dialog)
+    # Either triggers it. We OR them so the per-row rerun can enable verify
+    # for one job without flipping the env var globally.
+    use_verify = _verify_enabled() or bool(getattr(job, "verify_loop", 0))
     # Per-job model override (added 2026-05-24). When None the lower layers
     # fall back to settings.model. Verify-loop keeps using settings.review_model
     # by default; pipeline jobs that pin a vision model only override the
@@ -345,19 +414,38 @@ async def _process_row(
         if accept and crop_bbox is not None:
             crop_out = run_dir / "images" / f"{row.appno or row.id}_{evidences.index(url) + 1}.png"
             await loop.run_in_executor(None, crop_to_bbox, ev_path, crop_bbox, crop_out, 0.05)
-            crops[url] = str(crop_out)
-            if best is None or result.confidence > best.confidence:
-                best = result
-                best_evidence_path = ev_path
+            # Post-crop sanity check: reject hallucinated bboxes that landed
+            # on a blank margin OR are absurdly tiny. Downgrades to crops[url]
+            # = None so this evidence is excluded from best-selection, and
+            # if EVERY evidence gets rejected the row ends up needs_review
+            # (the `best is None` branch below).
+            sanity = await loop.run_in_executor(
+                None, _crop_sanity_check, crop_out, ev_path
+            )
+            if sanity is not None:
+                metas[url]["sanity_rejected"] = sanity
+                crops[url] = None
+                # Don't delete the file — keep it around so a human can audit
+                # what the LLM thought was a logo. It just doesn't count as a
+                # candidate for best-selection.
+            else:
+                crops[url] = str(crop_out)
+                if best is None or result.confidence > best.confidence:
+                    best = result
+                    best_evidence_path = ev_path
+                    best_url = url
         else:
             crops[url] = None
 
-    if best is None or best_evidence_path is None:
+    if best is None or best_evidence_path is None or best_url is None:
         status = "needs_review"
         best_crop = None
     else:
         status = "ok"
-        best_crop = crops.get(evidences[[i for i, u in enumerate(evidences) if metas.get(u, {}).get("confidence") == best.confidence][0]]) if evidences else None
+        # Direct lookup by URL — the old version walked confidence equality
+        # through metas which broke when two evidences happened to share the
+        # same float and could pick the wrong (or even sanity-rejected) URL.
+        best_crop = crops.get(best_url)
 
     store.update_job_row(
         row.id,
@@ -380,8 +468,14 @@ async def _run_job(job_id: str, source_path: Path, settings: Settings) -> None:
 
     rows = store.list_job_rows(job_id)
     cost_total = 0.0
+    # Resume / single-row rerun: only process rows that are still pending or
+    # were mid-flight when we last stopped. Rows that already reached a
+    # terminal state (ok / bad / needs_review / failed) are skipped — the
+    # /rerun endpoints reset row.status to "pending" first, which is what
+    # makes them re-eligible here.
+    _RERUNNABLE = {"pending", "running"}
     for row in rows:
-        if row.status == "ok":
+        if row.status not in _RERUNNABLE:
             continue
         store.update_job_row(row.id, status="running")
         await publish(job_id, {"type": "progress", "row": _row_to_dict(store.get_job_row(row.id))})  # type: ignore[arg-type]

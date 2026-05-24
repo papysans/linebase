@@ -115,6 +115,11 @@ class CreateJobRequest(BaseModel):
     # Validated in create_job(): must be in MODEL_WHITELIST or routable via
     # _PROVIDER_PREFIXES — otherwise 400.
     model: str | None = None
+    # Opt-in: when true, the pipeline runs the verify-loop (extra LLM call per
+    # evidence to confirm the crop) — slower + ~2x cost but catches the
+    # "brand-recognition shortcut" failure (job 2a2e801827dc457b row 79 picked
+    # the Heat fireball when the TM was a basketball-player silhouette).
+    verify_loop: bool = False
 
 
 def _resolve_rows(upload: store.Upload, req: CreateJobRequest) -> list[dict]:
@@ -162,6 +167,7 @@ def create_job(req: CreateJobRequest) -> dict:
         appno_column=req.appno_column, threshold=req.threshold,
         sample_kind=req.sample_kind, sample_params=req.sample_params,
         model=model_value,
+        verify_loop=1 if req.verify_loop else 0,
     )
     rows_data = _resolve_rows(upload, req)
     # filter out blatantly empty rows (no logo URL AND no evidence)
@@ -247,6 +253,77 @@ async def rerun(job_id: str, req: RerunRequest) -> dict:
     for r in targets:
         store.update_job_row(r.id, status="pending", best_crop_path=None, all_crops_json="{}", match_meta_json="{}")
     store.update_job(job_id, status="pending")
+    upload = store.get_upload(job.upload_id)
+    assert upload is not None
+    settings = Settings.from_env()
+    start_job(job_id, Path(upload.path), settings)
+    return _job_to_dict(store.get_job(job_id))  # type: ignore[arg-type]
+
+
+class RowRerunRequest(BaseModel):
+    """One-shot rerun knobs scoped to a single row. Both fields are opt-in:
+    omit them to reuse the job's existing model + verify_loop settings.
+    """
+    verify: bool = False  # force verify-loop on for this rerun (cost ~2x)
+    model: str | None = None  # transient model override for this rerun
+
+
+@app.post("/api/jobs/{job_id}/rows/{row_id}/rerun")
+async def rerun_one_row(job_id: str, row_id: int, req: RowRerunRequest) -> dict:
+    """Re-run a single row with optional verify+model overrides.
+
+    Semantics:
+      1. Reset the target row to `pending` and clear its crop / meta / human
+         status so the next run starts clean.
+      2. If the caller asked for verify or a model override, patch those onto
+         the job row (these stick — there's no UI to unset them later; the
+         simpler "no transient state" path matches the autonomous-loop spirit
+         of this project).
+      3. Kick off `start_job`. `_run_job` skips ok/bad/needs_review/failed rows,
+         so only the just-reset row will be processed.
+
+    Why we don't snapshot-and-restore the job: per-row rerun is an interactive
+    debugging tool. The user is iterating on a row that went wrong; if they
+    later want the original model back, they re-pick it in the row's rerun
+    dialog. Worth one column of muscle-memory for zero state-machine complexity.
+    """
+    row = store.get_job_row(row_id)
+    if not row or row.job_id != job_id:
+        raise HTTPException(404)
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404)
+
+    # Patch job-level overrides first so _process_row sees them when it runs.
+    job_updates: dict = {}
+    if req.verify:
+        job_updates["verify_loop"] = 1
+    if req.model and req.model.strip():
+        candidate = req.model.strip()
+        if not is_model_routable(candidate):
+            raise HTTPException(
+                400,
+                f"model {candidate!r} is not in the whitelist and does not match any routable provider prefix",
+            )
+        job_updates["model"] = candidate
+    if job_updates:
+        store.update_job(job_id, **job_updates)
+
+    # Reset the row so the runner picks it up. clear best_crop / crops / meta
+    # so the previous (wrong) result doesn't bleed into the UI mid-rerun.
+    store.update_job_row(
+        row_id,
+        status="pending",
+        best_crop_path=None,
+        all_crops_json="{}",
+        match_meta_json="{}",
+        human_status=None,
+        notes=None,
+    )
+    # Job-level status flip so the SSE stream and the job summary correctly
+    # report "running" while the one row is in-flight.
+    store.update_job(job_id, status="pending")
+
     upload = store.get_upload(job.upload_id)
     assert upload is not None
     settings = Settings.from_env()

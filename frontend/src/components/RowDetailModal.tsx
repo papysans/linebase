@@ -17,8 +17,9 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import type { JobRow } from "@/lib/api";
+import { GlassButton } from "@/components/GlassButton";
 import { GlassPill, type PillStatus } from "@/components/GlassPill";
 import { GlassInput } from "@/components/GlassInput";
 import { cn } from "@/lib/cn";
@@ -27,9 +28,13 @@ interface RowDetailModalProps {
   row: JobRow;
   onClose: () => void;
   onSet: (status: PillStatus, notes?: string) => void;
+  /** Optional. When provided, the modal shows a 🔄 重跑 button in the header
+   *  that delegates to the parent — the parent owns the rerun dialog state so
+   *  the modal stays focused on hand-review. */
+  onOpenRerun?: () => void;
 }
 
-export function RowDetailModal({ row, onClose, onSet }: RowDetailModalProps) {
+export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailModalProps) {
   // The center column starts on the LLM-chosen "best" evidence so the user
   // immediately sees what the model picked. Clicking thumbnails in the strip
   // swaps the center column.
@@ -117,14 +122,27 @@ export function RowDetailModal({ row, onClose, onSet }: RowDetailModalProps) {
               </span>
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-            className="glass-button glass-button--ghost glass-button--sm"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenRerun && (
+              <GlassButton
+                variant="ghost"
+                size="sm"
+                onClick={onOpenRerun}
+                leadingIcon={<RotateCcw size={14} />}
+                title="重跑此行（可选二次校验 / 模型覆盖）"
+              >
+                重跑
+              </GlassButton>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="关闭"
+              className="glass-button glass-button--ghost glass-button--sm"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         {/* three columns */}

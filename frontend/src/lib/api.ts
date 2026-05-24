@@ -28,6 +28,10 @@ export interface JobSummary {
   prompt_version: string | null;
   model?: string | null;
   created_at?: number;
+  /** Job-level opt-in: every evidence call is followed by a verify-loop
+   *  call to confirm the crop actually contains the trademark shape.
+   *  Doubles per-row cost. Server projects the SQLite INTEGER to a bool. */
+  verify_loop?: boolean;
 }
 
 export interface ModelOption {
@@ -134,6 +138,7 @@ export const api = {
     sample_params: Record<string, unknown>;
     threshold: number;
     model?: string | null;
+    verify_loop?: boolean;
   }) => json<JobSummary>("/api/jobs", { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }),
   listModels: () => json<ModelsResponse>("/api/models"),
   startJob: (id: string) => json<JobSummary>(`/api/jobs/${id}/start`, { method: "POST" }),
@@ -150,6 +155,22 @@ export const api = {
     json<JobSummary>(`/api/jobs/${jobId}/rerun`, {
       method: "POST",
       body: JSON.stringify({ row_ids: rowIds ?? null }),
+      headers: { "Content-Type": "application/json" },
+    }),
+  /** Per-row rerun with opt-in verify-loop + model override. The overrides
+   *  persist on the job (no transient state) — pick the model again next
+   *  rerun if you want to switch back. See /api/jobs/{id}/rows/{rowId}/rerun. */
+  rerunRow: (
+    jobId: string,
+    rowId: number,
+    opts?: { verify?: boolean; model?: string | null },
+  ) =>
+    json<JobSummary>(`/api/jobs/${jobId}/rows/${rowId}/rerun`, {
+      method: "POST",
+      body: JSON.stringify({
+        verify: opts?.verify ?? false,
+        model: opts?.model ?? null,
+      }),
       headers: { "Content-Type": "application/json" },
     }),
   evalRuns: () => json<{ id: number; prompt_version: string; model: string; metrics: Record<string, unknown>; created_at: number }[]>("/api/dev/eval-runs"),
