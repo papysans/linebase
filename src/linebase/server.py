@@ -192,6 +192,18 @@ async def start(job_id: str) -> dict:
     return _job_to_dict(store.get_job(job_id))  # type: ignore[arg-type]
 
 
+@app.get("/api/jobs")
+def list_jobs_view(limit: int = 50) -> list[dict]:
+    """Recent jobs, newest first. Backs the frontend empty-state on
+    /run, /review, /download when the user lands without a jobId in URL.
+
+    Clamped to [1, 200] to keep the response small (and because the picker
+    only shows the top ~5 anyway).
+    """
+    limit = max(1, min(200, int(limit)))
+    return [_job_to_dict(j) for j in store.list_jobs(limit=limit)]
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job_view(job_id: str) -> dict:
     job = store.get_job(job_id)

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Cpu, Settings2, Table2 } from "lucide-react";
 import { api, type SheetInfo } from "@/lib/api";
+import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassField, GlassInput, GlassSelect } from "@/components/GlassInput";
@@ -36,6 +37,12 @@ function detectUrlColumns(sheet: SheetInfo): { columns: string[] } {
 export function ConfigurePage() {
   const { uploadId = "" } = useParams();
   const navigate = useNavigate();
+
+  // Deep-link / refresh case: capture the uploadId from the URL into the
+  // session so the top-nav "配置" link survives the next page nav.
+  useEffect(() => {
+    if (uploadId) setSession({ uploadId });
+  }, [uploadId]);
   const { data: upload, isLoading } = useQuery({
     queryKey: ["upload", uploadId],
     queryFn: () => api.getUpload(uploadId),
@@ -130,6 +137,7 @@ export function ConfigurePage() {
         threshold,
         model: modelToSend ?? null,
       });
+      setSession({ uploadId, jobId: job.id });
       navigate(`/run/${job.id}`);
     } catch (e) {
       setError(String(e));

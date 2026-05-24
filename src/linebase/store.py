@@ -210,6 +210,17 @@ def update_job(job_id: str, **fields: Any) -> None:
     db().execute(f"UPDATE job SET {cols} WHERE id=?", (*fields.values(), job_id))
 
 
+def list_jobs(limit: int = 50) -> list[Job]:
+    """Most-recent-first listing of jobs. Backs the frontend empty-state
+    "open a recent task" picker on /run, /review, /download.
+    """
+    rows = db().execute(
+        "SELECT * FROM job ORDER BY created_at DESC LIMIT ?",
+        (max(1, int(limit)),),
+    ).fetchall()
+    return [Job(**dict(r)) for r in rows]
+
+
 # --- JobRow -----------------------------------------------------------------
 
 @dataclass

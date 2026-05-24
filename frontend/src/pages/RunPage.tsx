@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, ArrowRight, Play } from "lucide-react";
 import { api, type JobRow, type JobSummary } from "@/lib/api";
+import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassSpinner } from "@/components/GlassSpinner";
@@ -31,6 +32,11 @@ export function RunPage() {
     refetchInterval: 2000,
   });
   const [events, setEvents] = useState<SseEvent[]>([]);
+
+  // Sync URL jobId into session — covers deep-link / shared URL / refresh.
+  useEffect(() => {
+    if (jobId) setSession({ jobId });
+  }, [jobId]);
 
   useEffect(() => {
     if (!jobId) return;

@@ -2,6 +2,7 @@ import { useState, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileSpreadsheet, UploadCloud, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassSpinner } from "@/components/GlassSpinner";
 import { cn } from "@/lib/cn";
@@ -25,6 +26,9 @@ export function UploadPage() {
     setProgress({ loaded: 0, total: file.size });
     try {
       const res = await api.uploadXlsx(file, (p) => setProgress(p));
+      // New upload invalidates the old jobId so the top-nav "审查/运行/下载"
+      // don't keep pointing to a stale completed job.
+      setSession({ uploadId: res.id, jobId: undefined });
       navigate(`/configure/${res.id}`);
     } catch (e) {
       setError(String(e));

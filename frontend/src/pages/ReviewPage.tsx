@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Filter, RotateCcw } from "lucide-react";
 import { api, type JobRow } from "@/lib/api";
+import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassInput, GlassSelect } from "@/components/GlassInput";
@@ -24,6 +25,11 @@ export function ReviewPage() {
   const { jobId = "" } = useParams();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("");
+
+  // Sync URL jobId into session — covers deep-link / shared URL / refresh.
+  useEffect(() => {
+    if (jobId) setSession({ jobId });
+  }, [jobId]);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["rows", jobId, filter],

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { FileSpreadsheet, ImageDown } from "lucide-react";
 import { api } from "@/lib/api";
+import { setSession } from "@/lib/session";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassSpinner } from "@/components/GlassSpinner";
@@ -14,6 +15,11 @@ export function DownloadPage() {
     queryFn: () => api.getJob(jobId),
   });
   const [onlyOk, setOnlyOk] = useState(false);
+
+  // Sync URL jobId into session — covers deep-link / shared URL / refresh.
+  useEffect(() => {
+    if (jobId) setSession({ jobId });
+  }, [jobId]);
 
   if (isLoading || !job) {
     return (

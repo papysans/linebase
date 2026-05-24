@@ -27,6 +27,7 @@ export interface JobSummary {
   cost_usd: number;
   prompt_version: string | null;
   model?: string | null;
+  created_at?: number;
 }
 
 export interface ModelOption {
@@ -148,4 +149,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
     }),
   evalRuns: () => json<{ id: number; prompt_version: string; model: string; metrics: Record<string, unknown>; created_at: number }[]>("/api/dev/eval-runs"),
+  /** Recent jobs, newest first. Backs the friendly empty state on
+   *  /run, /review, /download when the user lands without a jobId in the URL. */
+  listJobs: (limit = 5) =>
+    json<JobSummary[]>(`/api/jobs?limit=${encodeURIComponent(limit)}`),
 };
