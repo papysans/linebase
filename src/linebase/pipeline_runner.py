@@ -5,13 +5,15 @@ A job runs as one asyncio task that:
   2. for each row: download evidences, call LLM per evidence, crop best, persist to DB,
   3. publishes events to a per-job asyncio.Queue that the SSE endpoint consumes.
 
-Cost is approximated (model pricing is unknown for the 1m1ng relay; we estimate
-gpt-4o-class rates as a sane upper bound).
+Cost uses a per-model USD/1M-token table (see research/llm-pricing.md). Reasoning
+tokens are billed as output tokens by every provider in MODEL_PRICING, so the
+usage.completion_tokens count already includes them — no separate column needed.
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from collections import defaultdict
 from contextlib import suppress
@@ -28,6 +30,8 @@ from linebase.fetch import fetch
 from linebase.io_excel import iter_rows
 from linebase.llm import MatchResult, match_logo_in_photo
 from linebase.verify_loop import VerifyResult, match_with_verify
+
+_log = logging.getLogger(__name__)
 
 
 def _verify_enabled() -> bool:
@@ -102,6 +106,20 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
     d["best_completeness"] = _f(best.get("completeness")) if best else None
     d["best_isolation"] = _f(best.get("isolation")) if best else None
     d["best_reason"] = (best.get("reason") if best else None) or None
+    # Per-evidence bbox: list of [x1, y1, x2, y2] in pixel coords of the chosen
+    # evidence image. Exposed so the review-detail modal can overlay the LLM's
+    # bbox on top of the full-size evidence image. None when no best was found
+    # or the model didn't return a bbox (rare — `found: true` without bbox is
+    # treated as a malformed result by the matcher, but stay defensive).
+    best_bbox: list[float] | None = None
+    if best:
+        raw_bbox = best.get("bbox")
+        if isinstance(raw_bbox, (list, tuple)) and len(raw_bbox) == 4:
+            try:
+                best_bbox = [float(x) for x in raw_bbox]
+            except (TypeError, ValueError):
+                best_bbox = None
+    d["best_bbox"] = best_bbox
     # When the primary vision model rejected the evidence (e.g. Qwen3-VL's
     # <28 px tile error) and pipeline_runner retried with gpt-5.5, surface
     # that on the row so the reviewer sees a "回落 gpt-5.5" pill.
@@ -124,50 +142,64 @@ def _job_to_dict(job: store.Job) -> dict[str, Any]:
 _active_tasks: dict[str, asyncio.Task[None]] = {}
 
 
-# Per-provider adjustment factor applied to the gpt-5.x-rate base estimate.
-# The base formula uses OpenAI gpt-5 rates as a single scalar; Ark (Doubao) and
-# SiliconFlow (Qwen / GLM / Kimi) bill ~30-100× lower in practice. Multiplying
-# by these factors brings UI / SQLite `cost_usd` totals within ~2× of real
-# spend instead of the previous 30-100× over-count. See
-# research/lite-benchmark-4way.md and research/user-model-picker.md.
-_PROVIDER_COST_FACTOR: dict[str, float] = {
-    "openai": 1.0,
-    "ark": 0.02,
-    "siliconflow": 0.02,
+# Per-model real-USD pricing (per 1,000,000 tokens) at standard / on-line tier.
+# Tuple shape: (input_usd_per_1m, output_usd_per_1m, reasoning_usd_per_1m_or_None).
+# When the third value is None, reasoning tokens are billed AS output tokens by
+# the provider, and `usage.completion_tokens` already includes them — so a
+# single output rate is correct (no double-counting). See
+# .trellis/tasks/05-23-logo-lineart-auto-match-crop-pipeline/research/llm-pricing.md
+# for sources, dates, and per-model notes. Last refreshed: 2026-05-24.
+MODEL_PRICING: dict[str, tuple[float, float, float | None]] = {
+    # OpenAI (via 1m1ng relay; markup unknown — treat these as a floor)
+    "gpt-5.5":                            (5.00,  30.00, None),
+    "gpt-5.4":                            (2.50,  15.00, None),
+    # Volcengine Ark (Doubao); ≤32 K input bracket — see notes for segmented rates
+    "doubao-seed-2-0-pro-260215":         (0.47,   2.35, None),
+    "doubao-seed-2-0-mini-260428":        (0.029,  0.29, None),
+    "doubao-1.5-vision-pro-250328":       (0.44,   1.32, None),
+    # SiliconFlow (USD-denominated; Pro/ prefix = paid queue, same per-token cost)
+    "Qwen/Qwen3-VL-30B-A3B-Instruct":     (0.29,   1.00, None),
+    "Qwen/Qwen3-VL-32B-Instruct":         (0.20,   0.60, None),
+    "zai-org/GLM-4.5V":                   (0.14,   0.86, None),
+    "Pro/moonshotai/Kimi-K2.5":           (0.45,   2.25, None),
+    "Pro/moonshotai/Kimi-K2.6":           (0.90,   4.00, None),
+    "moonshotai/Kimi-K2.5":               (0.45,   2.25, None),  # non-Pro alias
+    "moonshotai/Kimi-K2.6":               (0.90,   4.00, None),  # non-Pro alias
 }
+
+# Fallback for unknown model ids: use the most expensive entry in the table
+# (gpt-5.5) as a defensible upper bound. Surface a one-time warning per model
+# so we notice when a new id has slipped past the catalog.
+_unknown_model_warned: set[str] = set()
 
 
 def cost_estimate(usage: dict[str, int] | None, model: str | None = None) -> float:
-    """Approximate USD spend for one LLM call.
+    """USD spend for one LLM call, using MODEL_PRICING.
 
-    Base = gpt-5-rate scalar; multiplied by `_PROVIDER_COST_FACTOR[provider]`
-    when the model resolves to a non-OpenAI provider. `model=None` keeps the
-    old behaviour for backwards compatibility with callers that don't yet pass
-    one (in practice every call site does, after 2026-05-24).
+    Reasoning tokens for thinking-models (Doubao Seed 2.0 *, Kimi K2.x) are
+    billed as output tokens by the provider and `usage.completion_tokens`
+    already includes them on the OpenAI / Ark / SiliconFlow OpenAI-compatible
+    surfaces we use — so there is no separate reasoning column to add here.
+
+    Unknown model → fall back to gpt-5.5 rates and log once.
     """
     if not usage:
         return 0.0
-    base = (
-        usage.get("prompt_tokens", 0) * 2.5e-6
-        + usage.get("completion_tokens", 0) * 10e-6
+    key = (model or "").strip()
+    pricing = MODEL_PRICING.get(key)
+    if pricing is None:
+        if key and key not in _unknown_model_warned:
+            _unknown_model_warned.add(key)
+            _log.warning(
+                "cost_estimate: unknown model %r, falling back to gpt-5.5 rates",
+                key,
+            )
+        pricing = MODEL_PRICING["gpt-5.5"]
+    in_rate, out_rate, _reasoning_rate = pricing
+    return (
+        usage.get("prompt_tokens", 0) * in_rate / 1_000_000
+        + usage.get("completion_tokens", 0) * out_rate / 1_000_000
     )
-    if not model:
-        return base
-    try:
-        # Lazy: Settings is heavy to construct, so cache the provider lookup
-        # per process. Module-scope `_settings_cache` is fine — config doesn't
-        # change at runtime.
-        global _settings_cache
-        if _settings_cache is None:
-            _settings_cache = Settings.from_env()
-        provider_name = _settings_cache.resolve_provider(model).name
-    except Exception:
-        return base
-    factor = _PROVIDER_COST_FACTOR.get(provider_name, 1.0)
-    return base * factor
-
-
-_settings_cache: Settings | None = None
 
 
 # Qwen3-VL's image preprocessor rejects tiles < 28 px on either side. The

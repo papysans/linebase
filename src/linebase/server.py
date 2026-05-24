@@ -382,7 +382,14 @@ if STATIC_DIR.exists():
 
     @app.get("/{rest:path}")
     def spa(rest: str) -> Response:
-        # only serve SPA for non-api paths; otherwise FastAPI route would have matched
+        # Guard: never serve the SPA index for /api/* paths. Without this,
+        # malformed API URLs (e.g. /api/jobs//xlsx when jobId is empty, or any
+        # typo'd endpoint) silently return index.html. The browser then saves
+        # an HTML file under the .xlsx URL extension, and the user complains
+        # the "downloaded file isn't xlsx". Explicit 404 makes the failure
+        # mode loud at the network layer.
+        if rest.startswith("api/") or rest == "api":
+            raise HTTPException(404)
         index = STATIC_DIR / "index.html"
         if not index.exists():
             raise HTTPException(404)

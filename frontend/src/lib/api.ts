@@ -61,6 +61,10 @@ export interface JobRow {
   best_isolation?: number | null;
   best_reason?: string | null;
   best_fallback_model?: string | null;
+  /** Pixel bbox [x1, y1, x2, y2] in the chosen evidence image, or null when
+   *  no best was selected or the LLM didn't return a bbox. Used by the
+   *  review-detail modal to overlay the LLM's region on the full-size image. */
+  best_bbox?: [number, number, number, number] | null;
 }
 
 async function json<T>(input: RequestInfo, init?: RequestInit): Promise<T> {

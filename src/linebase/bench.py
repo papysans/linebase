@@ -29,6 +29,12 @@ from linebase.config import ProviderConfig, Settings
 from linebase.crop import crop_to_bbox
 from linebase.eval import PairScore, RunSummary, score_pair, write_html_report, write_metrics_json
 from linebase.llm import MatchResult, match_logo_in_photo
+from linebase.pipeline_runner import MODEL_PRICING, cost_estimate  # noqa: F401
+
+# Re-export `MODEL_PRICING` + `cost_estimate` from pipeline_runner so the
+# benchmark and the production pipeline can never drift. The benchmark script
+# imports these as `linebase.bench.cost_estimate` (legacy call sites) — keep
+# the names accessible at this module path instead of switching call sites.
 
 # Lazy import — verify_loop drags in the verify prompt requirement, only needed
 # when use_verify=True.
@@ -116,51 +122,6 @@ def composite_score(r: MatchResult) -> float:
     if aux <= 0:
         return float(r.confidence)
     return float(r.confidence) * aux
-
-
-# Per-provider adjustment factor applied to the gpt-5-rate base estimate.
-# OpenAI = 1.0 (real billed rates), Ark (Doubao) and SiliconFlow (Qwen / GLM /
-# Kimi) bill ~30-100× lower than gpt-5 — so we scale by 0.02 to bring eval
-# totals within ~2× of real spend instead of the previous 30-100× over-count.
-# Same constants as pipeline_runner._PROVIDER_COST_FACTOR — kept duplicated
-# rather than imported because bench.py is also used standalone by the
-# benchmark script and we want it to stand on its own.
-_PROVIDER_COST_FACTOR: dict[str, float] = {
-    "openai": 1.0,
-    "ark": 0.02,
-    "siliconflow": 0.02,
-}
-
-_settings_cache_bench: Settings | None = None
-
-
-def cost_estimate(usage: dict[str, int] | None, model: str | None = None) -> float:
-    """Approximate USD spend for one LLM call.
-
-    Base = gpt-5-rate scalar (matches the original benchmark formula).
-    When `model` is supplied, we multiply by `_PROVIDER_COST_FACTOR[provider]`
-    so cross-provider runs in `eval_runner.py` and `benchmark_models.py`
-    produce honest USD totals instead of over-counting non-OpenAI providers.
-    `model=None` keeps the legacy behaviour for any caller that still hasn't
-    been updated.
-    """
-    if not usage:
-        return 0.0
-    base = (
-        usage.get("prompt_tokens", 0) * 2.5e-6
-        + usage.get("completion_tokens", 0) * 10e-6
-    )
-    if not model:
-        return base
-    try:
-        global _settings_cache_bench
-        if _settings_cache_bench is None:
-            _settings_cache_bench = Settings.from_env()
-        provider_name = _settings_cache_bench.resolve_provider(model).name
-    except Exception:
-        return base
-    factor = _PROVIDER_COST_FACTOR.get(provider_name, 1.0)
-    return base * factor
 
 
 # ---------------------------------------------------------------------------

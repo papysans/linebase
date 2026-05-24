@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Filter, RotateCcw } from "lucide-react";
+import { Download, Filter, Maximize2, RotateCcw } from "lucide-react";
 import { api, type JobRow } from "@/lib/api";
 import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
@@ -9,6 +9,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { GlassInput, GlassSelect } from "@/components/GlassInput";
 import { GlassPill, type PillStatus } from "@/components/GlassPill";
 import { GlassSpinner } from "@/components/GlassSpinner";
+import { RowDetailModal } from "@/components/RowDetailModal";
 import { cn } from "@/lib/cn";
 
 type Filter = "" | "ok" | "bad" | "needs_review" | "failed";
@@ -25,6 +26,11 @@ export function ReviewPage() {
   const { jobId = "" } = useParams();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("");
+  // ID of the row whose detail modal is open. We track by id (not the row
+  // object) so that when /api/jobs/{id}/rows is re-fetched the modal stays
+  // bound to the latest server-side state of that row (e.g., notes saved by
+  // the inline pill update inside the modal show up immediately on the card).
+  const [detailRowId, setDetailRowId] = useState<number | null>(null);
 
   // Sync URL jobId into session — covers deep-link / shared URL / refresh.
   useEffect(() => {
@@ -131,6 +137,7 @@ export function ReviewPage() {
             onSet={(s, n) =>
               setStatus.mutate({ rowId: r.id, status: s, notes: n })
             }
+            onOpenDetail={() => setDetailRowId(r.id)}
           />
         ))}
         {rows && rows.length === 0 && (
@@ -139,6 +146,23 @@ export function ReviewPage() {
           </GlassCard>
         )}
       </div>
+
+      {detailRowId !== null && rows && (() => {
+        // Resolve the latest version of the row from the freshly-fetched list
+        // so the modal reflects in-place edits without us having to keep a
+        // separate copy in state.
+        const r = rows.find((x) => x.id === detailRowId);
+        if (!r) return null;
+        return (
+          <RowDetailModal
+            row={r}
+            onClose={() => setDetailRowId(null)}
+            onSet={(s, n) =>
+              setStatus.mutate({ rowId: r.id, status: s, notes: n })
+            }
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -153,9 +177,11 @@ function statusTone(status: string): string {
 function ReviewRow({
   row,
   onSet,
+  onOpenDetail,
 }: {
   row: JobRow;
   onSet: (status: PillStatus, notes?: string) => void;
+  onOpenDetail: () => void;
 }) {
   const [notes, setNotes] = useState(row.notes ?? "");
   const current = (row.human_status ?? null) as PillStatus | null;
@@ -174,6 +200,15 @@ function ReviewRow({
         <div className="mt-1 font-mono text-[11px] text-aurora-magenta">
           {row.appno ?? "-"}
         </div>
+        <GlassButton
+          variant="ghost"
+          size="sm"
+          onClick={onOpenDetail}
+          leadingIcon={<Maximize2 size={12} />}
+          className="mt-2 !px-2 !py-1 text-[11px]"
+        >
+          查看详情
+        </GlassButton>
       </div>
 
       {/* thumbnails */}
