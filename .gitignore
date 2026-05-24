@@ -24,6 +24,7 @@ out/
 *.log
 scripts/_e2e_out/
 bench_run*.log
+.playwright-mcp/
 
 # ---- Frontend -------------------------------------------------------------
 frontend/node_modules/
@@ -48,4 +49,5 @@ Thumbs.db
 
 # ---- Misc ----------------------------------------------------------------
 *.tmp
+*.stackdump
 *.bak
