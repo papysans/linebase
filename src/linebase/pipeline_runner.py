@@ -337,8 +337,14 @@ async def _process_row(
         fallback_reason: str | None = None
         try:
             if use_verify:
+                # Thread `eff_model` through so per-job/per-row overrides apply
+                # to BOTH Pass-1 and the verify call (without this, verify_loop
+                # silently used settings.model regardless of the override).
                 vr: VerifyResult = await loop.run_in_executor(
-                    None, match_with_verify, logo_path, ev_path, settings
+                    None,
+                    lambda lp=logo_path, ep=ev_path, m=eff_model: match_with_verify(
+                        lp, ep, settings=settings, model=m
+                    ),
                 )
                 result: MatchResult = vr.primary
             else:
@@ -399,7 +405,12 @@ async def _process_row(
             meta["verify_iters"] = vr.iters
             meta["verify_final_bbox"] = list(vr.final_bbox) if vr.final_bbox else None
             if vr.verify_usage:
-                cost_delta += cost_estimate(vr.verify_usage, model=settings.review_model)
+                # match_with_verify now routes the verify call to `eff_model`
+                # when a job/row override is set (falling back to
+                # settings.review_model otherwise). Bill against the same model
+                # that actually answered so the per-row USD reflects reality.
+                verify_billed_model = job_model or settings.review_model
+                cost_delta += cost_estimate(vr.verify_usage, model=verify_billed_model)
                 meta["verify_usage"] = vr.verify_usage
         metas[url] = meta
 

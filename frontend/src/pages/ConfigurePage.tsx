@@ -62,11 +62,11 @@ export function ConfigurePage() {
   // "" means "use server default" — submitted as `undefined` model field.
   const [modelChoice, setModelChoice] = useState<string>("");
   const [customModel, setCustomModel] = useState<string>("");
-  // Opt-in verify-loop. Off by default — doubles per-row cost. Recommended
-  // when picking gpt-5.5 because that model has been observed to take brand-
-  // recognition shortcuts (Heat fireball labeled as "NBA branding" when the
-  // registered TM was the Jerry-West silhouette).
-  const [verifyLoop, setVerifyLoop] = useState<boolean>(false);
+  // Verify-loop is ON by default for prod batches (matches the server-side
+  // CreateJobRequest.verify_loop default). Catches the brand-recognition
+  // shortcut failure (Heat fireball labeled as "NBA branding" when the
+  // registered TM was the Jerry-West silhouette) at the cost of ~2x LLM spend.
+  const [verifyLoop, setVerifyLoop] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -237,10 +237,10 @@ export function ConfigurePage() {
             />
             <div className="space-y-0.5">
               <div className="font-medium text-slate-800 dark:text-slate-100">
-                二次校验（每个候选裁完后让模型再确认一次，更准但成本翻倍）
+                二次校验（推荐 · 更准 · 成本~2x）
               </div>
               <div className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
-                推荐用于 gpt-5.5 —— 能拦截"品牌识别捷径"导致的假阳性。
+                每个候选裁完后让模型再确认一次。生产批次默认开启，能拦截"品牌识别捷径"导致的假阳性。
               </div>
             </div>
           </label>

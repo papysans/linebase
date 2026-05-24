@@ -115,11 +115,13 @@ class CreateJobRequest(BaseModel):
     # Validated in create_job(): must be in MODEL_WHITELIST or routable via
     # _PROVIDER_PREFIXES — otherwise 400.
     model: str | None = None
-    # Opt-in: when true, the pipeline runs the verify-loop (extra LLM call per
+    # Default-on: the pipeline runs the verify-loop (extra LLM call per
     # evidence to confirm the crop) — slower + ~2x cost but catches the
     # "brand-recognition shortcut" failure (job 2a2e801827dc457b row 79 picked
     # the Heat fireball when the TM was a basketball-player silhouette).
-    verify_loop: bool = False
+    # Per the review-loop policy in memory/feedback_review_loop.md: prod batches
+    # default ON; cost overhead is worth catching wrong-identity false-positives.
+    verify_loop: bool = True
 
 
 def _resolve_rows(upload: store.Upload, req: CreateJobRequest) -> list[dict]:

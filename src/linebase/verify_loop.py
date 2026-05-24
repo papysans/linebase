@@ -70,6 +70,7 @@ def match_with_verify(
     client: OpenAI | None = None,
     max_iters: int = 2,
     verify_threshold: float = 0.6,
+    model: str | None = None,
 ) -> VerifyResult:
     """Pass-1 match + at most one verify call. See module docstring for the rules.
 
@@ -78,10 +79,17 @@ def match_with_verify(
     so SiliconFlow / Ark / OpenAI all route correctly. Passing a pre-built
     `client` is a legacy escape hatch — only use it when you know it matches the
     provider for `settings.model`.
+
+    `model`: optional per-call override. When set, BOTH Pass-1 and the verify
+    call use this model id (so per-job/per-row overrides actually reach both
+    passes). When None, Pass-1 falls back to `settings.model` and verify falls
+    back to `settings.review_model`, matching the legacy behavior.
     """
     settings = settings or Settings.from_env()
 
-    primary = match_logo_in_photo(logo_path, photo_path, settings=settings, client=client)
+    primary = match_logo_in_photo(
+        logo_path, photo_path, settings=settings, client=client, model=model
+    )
 
     # Skip verify when Pass-1 already says "no" or is too unsure.
     if not primary.found or primary.bbox is None or primary.confidence < 0.4:
@@ -124,7 +132,14 @@ def match_with_verify(
         tmp_path = Path(tmp.name)
     try:
         crop_to_bbox(photo_path, crop_bbox, tmp_path, pad_ratio=0.0)
-        verify = verify_crop(logo_path, tmp_path, settings=settings, client=client, model=settings.review_model)
+        # When the caller pinned a `model`, route the verify call to the SAME
+        # model so per-job overrides apply to both passes (previously verify
+        # silently used settings.review_model regardless). With no override,
+        # keep the legacy behavior of using settings.review_model.
+        verify_model = model or settings.review_model
+        verify = verify_crop(
+            logo_path, tmp_path, settings=settings, client=client, model=verify_model
+        )
     finally:
         try:
             tmp_path.unlink(missing_ok=True)
