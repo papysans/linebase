@@ -1,7 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-type Variant = "default" | "primary" | "ghost" | "success" | "warn";
+type Variant = "default" | "primary" | "ghost" | "success" | "warn" | "danger";
 type Size = "sm" | "md" | "lg";
 
 interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -24,6 +24,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
           variant === "ghost" && "glass-button--ghost",
           variant === "success" && "glass-button--success",
           variant === "warn" && "glass-button--warn",
+          variant === "danger" && "glass-button--danger",
           size === "sm" && "glass-button--sm",
           size === "lg" && "glass-button--lg",
           className,

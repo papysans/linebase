@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowRight, Play } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Activity, ArrowRight, OctagonAlert, Play } from "lucide-react";
 import { api, type JobRow, type JobSummary } from "@/lib/api";
 import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
@@ -10,7 +10,7 @@ import { GlassSpinner } from "@/components/GlassSpinner";
 import { cn } from "@/lib/cn";
 
 interface SseEvent {
-  type: "row_done" | "row_failed" | "progress" | "finished";
+  type: "row_done" | "row_failed" | "progress" | "finished" | "warning";
   row?: JobRow;
   job?: JobSummary;
   message?: string;
@@ -22,16 +22,19 @@ const STATUS_LABEL: Record<JobSummary["status"], string> = {
   paused: "已暂停",
   finished: "已完成",
   failed: "失败",
+  cancelled: "已取消",
 };
 
 export function RunPage() {
   const { jobId = "" } = useParams();
+  const queryClient = useQueryClient();
   const { data: job, refetch } = useQuery({
     queryKey: ["job", jobId],
     queryFn: () => api.getJob(jobId),
     refetchInterval: 2000,
   });
   const [events, setEvents] = useState<SseEvent[]>([]);
+  const [cancelling, setCancelling] = useState(false);
 
   // Sync URL jobId into session — covers deep-link / shared URL / refresh.
   useEffect(() => {
@@ -56,6 +59,21 @@ export function RunPage() {
 
   const start = async () => {
     await api.startJob(jobId);
+  };
+
+  const cancel = async () => {
+    // No native confirm modal here on purpose — the autonomous-dev-loop spirit
+    // of this UI prefers a one-click stop; rerun is one click away too if the
+    // user changes their mind. Disables the button while in-flight so the
+    // double-click case can't fire a second cancel against a no-op endpoint.
+    if (cancelling) return;
+    setCancelling(true);
+    try {
+      await api.cancelJob(jobId);
+      await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const progressPct = useMemo(() => {
@@ -125,6 +143,17 @@ export function RunPage() {
                 开始处理
               </GlassButton>
             )}
+            {(job.status === "running" || job.status === "pending") && (
+              <GlassButton
+                variant="danger"
+                onClick={cancel}
+                disabled={cancelling}
+                leadingIcon={<OctagonAlert size={14} />}
+                title="取消任务：停止后续行处理，已生成的裁切结果保留"
+              >
+                {cancelling ? "取消中…" : "取消"}
+              </GlassButton>
+            )}
             {job.status === "finished" && (
               <Link to={`/review/${jobId}`}>
                 <GlassButton
@@ -180,7 +209,12 @@ function EventLine({ event }: { event: SseEvent }) {
         ? "underglow-ok"
         : event.type === "finished"
           ? "underglow-ok"
-          : "";
+          : event.type === "warning"
+            // Reuse the bad-underglow class but with explicit amber background
+            // so warnings read clearly between green "row_done" and red
+            // "row_failed" lines. inline class tag below carries the colour.
+            ? "bg-amber-100/40 dark:bg-amber-300/10"
+            : "";
   const tagColor =
     event.type === "row_failed"
       ? "text-rose-600 dark:text-rose-300"
@@ -188,7 +222,9 @@ function EventLine({ event }: { event: SseEvent }) {
         ? "text-emerald-600 dark:text-emerald-300"
         : event.type === "finished"
           ? "text-emerald-600 dark:text-emerald-300"
-          : "text-slate-500 dark:text-slate-400";
+          : event.type === "warning"
+            ? "text-amber-600 dark:text-amber-300"
+            : "text-slate-500 dark:text-slate-400";
 
   return (
     <div

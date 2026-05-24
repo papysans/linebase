@@ -20,8 +20,10 @@ from linebase.fetch import fetch
 from linebase.io_excel import inspect_workbook, iter_rows, write_result_workbook
 from linebase.models_catalog import MODEL_WHITELIST, is_model_routable, to_dict as model_to_dict
 from linebase.pipeline_runner import (
+    _active_tasks,
     _job_to_dict,
     _row_to_dict,
+    publish,
     start_job,
     stream_events,
 )
@@ -182,6 +184,51 @@ def create_job(req: CreateJobRequest) -> dict:
         )
     store.update_job(job.id, total_rows=len(rows_data))
     return _job_to_dict(store.get_job(job.id))  # type: ignore[arg-type]
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+async def cancel(job_id: str) -> dict:
+    """Cancel an in-flight job.
+
+    Effects:
+      1. If `_active_tasks[job_id]` holds a not-done asyncio.Task, call
+         `.cancel()` on it. The task's awaiters (run_in_executor) cope with
+         CancelledError by propagating up — `_run_job` then exits its loop.
+      2. Mark the job row `status="cancelled"` in SQLite.
+      3. Flip any row still in `pending` or `running` to `failed` with
+         `notes="cancelled by user"` — distinct from a real `failed` because
+         the notes field tells the reviewer it was a deliberate stop.
+      4. Publish a `cancelled` SSE event so the RunPage stops the spinner.
+
+    Idempotent: re-cancelling an already-cancelled job is a no-op that still
+    returns the current job snapshot.
+    """
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404)
+
+    # 1. Kill the asyncio task if it's running.
+    task = _active_tasks.get(job_id)
+    if task is not None and not task.done():
+        task.cancel()
+
+    # 2 + 3. Persist cancellation state.
+    store.update_job(job_id, status="cancelled")
+    for r in store.list_job_rows(job_id):
+        if r.status in {"pending", "running"}:
+            store.update_job_row(r.id, status="failed", notes="cancelled by user")
+
+    # 4. Fire-and-forget SSE notification. We re-fetch the job so the event
+    # carries the post-cancel state.
+    refreshed = store.get_job(job_id)
+    if refreshed is not None:
+        await publish(job_id, {"type": "progress", "job": _job_to_dict(refreshed)})
+        await publish(
+            job_id,
+            {"type": "warning", "message": "任务已被用户取消"},
+        )
+
+    return _job_to_dict(refreshed)  # type: ignore[arg-type]
 
 
 @app.post("/api/jobs/{job_id}/start")

@@ -131,22 +131,47 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
 
     # Surface the chosen-best evidence's LLM scalars at the top level so the
     # frontend can render metric chips without re-parsing the meta dict.
-    # Rule: pick the entry with the highest confidence among found=True ones
-    # (same as the pipeline's best selection).
+    # Rule: pick the entry with the highest confidence among entries that
+    # survived verify + sanity (when present). This mirrors `_process_row`'s
+    # post-verify re-rank so the REST shape's `best_*` fields agree with the
+    # `best_crop_path` chosen by the pipeline.
     best_url: str | None = None
     best: dict[str, Any] | None = None
     try:
         meta = json.loads(meta_raw) if meta_raw else {}
     except Exception:
         meta = {}
+    crops_map = d.get("all_crops") or {}
     if isinstance(meta, dict):
+        # Two-pass selection: prefer entries with a real crop on disk +
+        # verified=True/None (i.e. not False) + no sanity_rejected. If none
+        # qualify (e.g. older rows from before this column existed), fall
+        # back to the original "max confidence among found=True" rule.
+        def _qualifies(m: dict[str, Any], url: str) -> bool:
+            if not m.get("found"):
+                return False
+            if m.get("sanity_rejected"):
+                return False
+            if m.get("verified") is False:
+                return False
+            return bool(crops_map.get(url))
+
         for url, m in meta.items():
-            if not isinstance(m, dict) or not m.get("found"):
+            if not isinstance(m, dict) or not _qualifies(m, url):
                 continue
             conf = float(m.get("confidence") or 0.0)
             if best is None or conf > float(best.get("confidence") or 0.0):
                 best = m
                 best_url = url
+        if best is None:
+            # Legacy fallback for rows pre-dating the post-verify columns.
+            for url, m in meta.items():
+                if not isinstance(m, dict) or not m.get("found"):
+                    continue
+                conf = float(m.get("confidence") or 0.0)
+                if best is None or conf > float(best.get("confidence") or 0.0):
+                    best = m
+                    best_url = url
 
     def _f(v: Any) -> float | None:
         if v is None:
@@ -180,6 +205,28 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
     # <28 px tile error) and pipeline_runner retried with gpt-5.5, surface
     # that on the row so the reviewer sees a "回落 gpt-5.5" pill.
     d["best_fallback_model"] = (best.get("fallback_model") if best else None) or None
+
+    # Per-evidence meta projection for the row-detail modal: surface the verify
+    # outcome + sanity rejection reason so the reviewer can understand WHY a
+    # sibling evidence was skipped over (e.g. "verified=False fit=wrong" or
+    # "sanity_rejected=crop_mostly_blank"). Schema deliberately small — only
+    # the fields the modal renders. Empty dict when no meta yet (pending row).
+    match_meta: dict[str, dict[str, Any]] = {}
+    if isinstance(meta, dict):
+        for url, m in meta.items():
+            if not isinstance(m, dict):
+                continue
+            match_meta[url] = {
+                "found": m.get("found"),
+                "confidence": _f(m.get("confidence")),
+                "verified": m.get("verified"),
+                "fit": m.get("fit"),
+                "verify_reason": m.get("verify_reason"),
+                "sanity_rejected": m.get("sanity_rejected"),
+                "fallback_model": m.get("fallback_model"),
+                "error": m.get("error"),
+            }
+    d["match_meta"] = match_meta
     return d
 
 
@@ -280,6 +327,52 @@ _SMALL_IMAGE_FALLBACK_MODEL = "gpt-5.5"
 def _is_small_image_rejection(exc: BaseException) -> bool:
     msg = str(exc).lower()
     return any(marker in msg for marker in _QWEN_SMALL_IMAGE_MARKERS)
+
+
+# Volcengine Ark surfaces "out of funds" as an HTTP 402 with a JSON body
+# containing `AccountOverdueError` and/or the Chinese string "账户已欠费".
+# When we see this we silently retry the SAME evidence against gpt-5.5 and
+# log + SSE-warn once per job so the operator notices but the run continues.
+#
+# Markers are checked case-insensitively against `str(exc)` — the OpenAI SDK
+# stringifies APIStatusError as something like
+#   "Error code: 402 - {'error': {'message': 'AccountOverdueError: ...'}}"
+# so the substring search catches both shapes (HTTP code + provider error name).
+_ARK_OVERDUE_MARKERS: tuple[str, ...] = (
+    "accountoverdueerror",
+    "账户已欠费",
+)
+
+# Model id the Ark-overdue branch falls back to. gpt-5.5 is also the
+# small-image fallback above; the choice is deliberate — one extra provider
+# routing path means one place to maintain.
+_ARK_OVERDUE_FALLBACK_MODEL = "gpt-5.5"
+
+
+def _is_ark_overdue(exc: BaseException) -> bool:
+    """True when the LLM call failed because the Ark account ran out of funds.
+
+    We sniff three independent markers (case-insensitive against the full
+    stringified exception): the provider-specific error name, the HTTP 402
+    status code, and the Chinese billing message. Any one match triggers
+    fallback — a provider rename of one marker won't silently bypass us.
+    """
+    msg = str(exc).lower()
+    if any(marker in msg for marker in _ARK_OVERDUE_MARKERS):
+        return True
+    # The OpenAI SDK formats `APIStatusError` as "Error code: 402 - ...".
+    # Match the literal "402" inside that prefix to catch billing errors from
+    # providers that don't include the Ark-specific markers above.
+    if "error code: 402" in msg:
+        return True
+    return False
+
+
+# Job-level "we've already warned about this provider being broke" set.
+# Keyed by job_id so re-running the same job after a top-up doesn't suppress
+# the warning forever. Touched only inside _one_evidence under no lock since
+# asyncio is single-threaded per event loop.
+_ark_overdue_warned: set[str] = set()
 
 
 # Post-crop sanity-check thresholds. Added 2026-05-24 after the 74677567 row
@@ -413,17 +506,62 @@ async def _process_row(
 
             fallback_used = False
             fallback_reason: str | None = None
+            # Tracks which provider-fallback class fired (small_image | ark_overdue).
+            # Surfaced on the meta so the row-detail modal can render a
+            # provider-specific pill instead of the generic "回落" one.
+            fallback_kind: str | None = None
             vr: VerifyResult | None = None
             try:
                 if use_verify:
                     # Thread `eff_model` through so per-job/per-row overrides
                     # apply to BOTH Pass-1 and the verify call.
-                    vr = await loop.run_in_executor(
-                        None,
-                        lambda lp=logo_path, ep=ev_path, m=eff_model: match_with_verify(
-                            lp, ep, settings=settings, model=m
-                        ),
-                    )
+                    try:
+                        vr = await loop.run_in_executor(
+                            None,
+                            lambda lp=logo_path, ep=ev_path, m=eff_model: match_with_verify(
+                                lp, ep, settings=settings, model=m
+                            ),
+                        )
+                    except Exception as inner_exc:
+                        # Ark "AccountOverdueError" / HTTP 402 / 账户已欠费 →
+                        # retry with gpt-5.5. We retry the ENTIRE verify path
+                        # against gpt-5.5 (both primary and verify call) so the
+                        # row doesn't get stuck halfway through a billing
+                        # outage. One warning per job.
+                        if (
+                            _is_ark_overdue(inner_exc)
+                            and eff_model != _ARK_OVERDUE_FALLBACK_MODEL
+                        ):
+                            fallback_used = True
+                            fallback_kind = "ark_overdue"
+                            fallback_reason = "ark_overdue"
+                            if job.id not in _ark_overdue_warned:
+                                _ark_overdue_warned.add(job.id)
+                                _log.warning(
+                                    "Ark account overdue — falling back to %s "
+                                    "for remaining LLM calls in job %s",
+                                    _ARK_OVERDUE_FALLBACK_MODEL,
+                                    job.id,
+                                )
+                                await publish(
+                                    job.id,
+                                    {
+                                        "type": "warning",
+                                        "message": (
+                                            f"Ark 账户欠费 (HTTP 402)，本任务剩余调用回落到 "
+                                            f"{_ARK_OVERDUE_FALLBACK_MODEL}"
+                                        ),
+                                    },
+                                )
+                            vr = await loop.run_in_executor(
+                                None,
+                                lambda lp=logo_path, ep=ev_path: match_with_verify(
+                                    lp, ep, settings=settings,
+                                    model=_ARK_OVERDUE_FALLBACK_MODEL,
+                                ),
+                            )
+                        else:
+                            raise
                     result: MatchResult = vr.primary
                 else:
                     try:
@@ -440,6 +578,7 @@ async def _process_row(
                             and eff_model != _SMALL_IMAGE_FALLBACK_MODEL
                         ):
                             fallback_used = True
+                            fallback_kind = "small_image"
                             fallback_reason = (
                                 f"{eff_model} rejected <28 px image; "
                                 f"retrying with {_SMALL_IMAGE_FALLBACK_MODEL}"
@@ -448,6 +587,42 @@ async def _process_row(
                                 None,
                                 lambda lp=logo_path, ep=ev_path: match_logo_in_photo(
                                     lp, ep, settings=settings, model=_SMALL_IMAGE_FALLBACK_MODEL
+                                ),
+                            )
+                        # Ark "AccountOverdueError" / HTTP 402 / 账户已欠费 →
+                        # retry this evidence against gpt-5.5. One log + one
+                        # SSE warning per job; subsequent overdue hits on the
+                        # same job retry silently to avoid event-log spam.
+                        elif (
+                            _is_ark_overdue(inner_exc)
+                            and eff_model != _ARK_OVERDUE_FALLBACK_MODEL
+                        ):
+                            fallback_used = True
+                            fallback_kind = "ark_overdue"
+                            fallback_reason = "ark_overdue"
+                            if job.id not in _ark_overdue_warned:
+                                _ark_overdue_warned.add(job.id)
+                                _log.warning(
+                                    "Ark account overdue — falling back to %s "
+                                    "for remaining LLM calls in job %s",
+                                    _ARK_OVERDUE_FALLBACK_MODEL,
+                                    job.id,
+                                )
+                                await publish(
+                                    job.id,
+                                    {
+                                        "type": "warning",
+                                        "message": (
+                                            f"Ark 账户欠费 (HTTP 402)，本任务剩余调用回落到 "
+                                            f"{_ARK_OVERDUE_FALLBACK_MODEL}"
+                                        ),
+                                    },
+                                )
+                            result = await loop.run_in_executor(
+                                None,
+                                lambda lp=logo_path, ep=ev_path: match_logo_in_photo(
+                                    lp, ep, settings=settings,
+                                    model=_ARK_OVERDUE_FALLBACK_MODEL,
                                 ),
                             )
                         else:
@@ -468,10 +643,20 @@ async def _process_row(
                 "model": result.model,
             }
             if fallback_used:
-                meta["fallback_model"] = _SMALL_IMAGE_FALLBACK_MODEL
+                # Both fallback branches currently retry against the same model
+                # id (gpt-5.5), but record the model used by what actually
+                # answered (`result.model`) so a future fallback target rename
+                # doesn't silently misattribute cost.
+                meta["fallback_model"] = result.model or _ARK_OVERDUE_FALLBACK_MODEL
                 meta["fallback_reason"] = fallback_reason
+                if fallback_kind:
+                    meta["fallback_kind"] = fallback_kind
             # Bill the call against the model that actually answered.
-            billed_model = _SMALL_IMAGE_FALLBACK_MODEL if fallback_used else eff_model
+            billed_model = (
+                result.model
+                if fallback_used and result.model
+                else eff_model
+            )
             local_cost += cost_estimate(result.usage, model=billed_model)
 
             if use_verify and vr is not None:
@@ -484,7 +669,14 @@ async def _process_row(
                     list(vr.final_bbox) if vr.final_bbox else None
                 )
                 if vr.verify_usage:
-                    verify_billed_model = job_model or settings.review_model
+                    # When the ark-overdue fallback fired, the entire verify
+                    # call ran against gpt-5.5 too — bill against that model
+                    # rather than the original review_model so the cost
+                    # estimate matches the actual provider invoice.
+                    if fallback_used and fallback_kind == "ark_overdue":
+                        verify_billed_model = _ARK_OVERDUE_FALLBACK_MODEL
+                    else:
+                        verify_billed_model = job_model or settings.review_model
                     local_cost += cost_estimate(
                         vr.verify_usage, model=verify_billed_model
                     )
@@ -533,9 +725,10 @@ async def _process_row(
     cost_delta = 0.0
     crops: dict[str, str | None] = {}
     metas: dict[str, dict[str, Any]] = {}
-    best: MatchResult | None = None
-    best_evidence_path: Path | None = None
-    best_url: str | None = None
+    # Preserve the per-evidence MatchResult alongside the meta dict so the
+    # post-verify, post-sanity re-ranking pass below can recover the original
+    # confidence + bbox without having to JSON-roundtrip through `meta`.
+    results_by_url: dict[str, MatchResult] = {}
 
     for url, outcome in zip(evidences, results):
         if isinstance(outcome, BaseException):
@@ -546,23 +739,47 @@ async def _process_row(
         metas[url] = meta
         crops[url] = crop_path
         cost_delta += local_cost
-        if (
-            crop_path is not None
-            and result is not None
-            and (best is None or result.confidence > best.confidence)
-        ):
-            best = result
-            best_evidence_path = ev_path
-            best_url = url
+        if result is not None:
+            results_by_url[url] = result
 
-    if best is None or best_evidence_path is None or best_url is None:
+    # --- Best-crop selection (post-verify, post-sanity re-rank) -----------
+    # Old behavior: pick max(confidence) over evidences whose CROP survived
+    # sanity+verify. That collapsed in the row-85094272 (Polo) case: a sibling
+    # evidence had its crop sanity-rejected mid-loop but was still ranked
+    # ahead of a clean-but-lower-confidence sibling because we accumulated the
+    # "best" inside the gather-walk loop and never re-evaluated.
+    #
+    # New behavior: AFTER the gather is complete, rebuild the candidate list
+    # from rows that genuinely survived every downstream filter (verify, sanity,
+    # crop-file-exists). Sort that list by confidence desc and pick the top.
+    # If everything failed, status=needs_review with best_crop=None.
+    use_verify_now = use_verify  # local alias for readability in the filter
+    viable: list[tuple[str, dict[str, Any]]] = []
+    for url, meta in metas.items():
+        if not isinstance(meta, dict):
+            continue
+        if not meta.get("found"):
+            continue
+        if meta.get("sanity_rejected"):
+            continue
+        if use_verify_now and meta.get("verified") is not True:
+            continue
+        # Crop file must actually exist — the inner helper sets crops[url]=None
+        # when verify rejected the bbox or sanity flagged a blank/tiny crop.
+        if not crops.get(url):
+            continue
+        viable.append((url, meta))
+
+    if not viable:
         status = "needs_review"
         best_crop = None
     else:
+        # Sort by confidence desc; ties broken by URL order which is stable
+        # (Python's sort is stable, and we iterate metas in insertion order
+        # which matches evidence-URL order via the gather-results zip).
+        viable.sort(key=lambda kv: float(kv[1].get("confidence") or 0.0), reverse=True)
+        best_url = viable[0][0]
         status = "ok"
-        # Direct lookup by URL — the old version walked confidence equality
-        # through metas which broke when two evidences happened to share the
-        # same float and could pick the wrong (or even sanity-rejected) URL.
         best_crop = crops.get(best_url)
 
     store.update_job_row(

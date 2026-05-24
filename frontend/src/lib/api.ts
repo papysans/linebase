@@ -21,7 +21,7 @@ export interface JobSummary {
   evidence_column: string;
   appno_column: string;
   threshold: number;
-  status: "pending" | "running" | "paused" | "finished" | "failed";
+  status: "pending" | "running" | "paused" | "finished" | "failed" | "cancelled";
   total_rows: number;
   done_rows: number;
   cost_usd: number;
@@ -69,6 +69,32 @@ export interface JobRow {
    *  no best was selected or the LLM didn't return a bbox. Used by the
    *  review-detail modal to overlay the LLM's region on the full-size image. */
   best_bbox?: [number, number, number, number] | null;
+  /** Per-evidence meta projection. Keyed by evidence URL; each value carries
+   *  enough information for the row-detail modal to explain WHY a sibling
+   *  evidence was rejected (verified=false, fit=wrong, sanity_rejected=...,
+   *  fallback_model=gpt-5.5, etc.). Empty object on rows that haven't been
+   *  processed yet. */
+  match_meta?: Record<string, EvidenceMeta>;
+}
+
+export interface EvidenceMeta {
+  found?: boolean | null;
+  confidence?: number | null;
+  /** Verify-loop outcome: True = verify accepted the bbox, False = rejected,
+   *  null/undefined = verify was disabled or the call hasn't happened yet. */
+  verified?: boolean | null;
+  /** One of {"tight", "loose", "too_tight", "wrong"} when verify ran. */
+  fit?: string | null;
+  /** Short text from the verify call explaining the fit verdict. */
+  verify_reason?: string | null;
+  /** Non-null short reason when the post-crop sanity check rejected the bbox
+   *  (e.g. "crop_too_small (area_ratio=0.001)" or "crop_mostly_blank"). */
+  sanity_rejected?: string | null;
+  /** Set to "gpt-5.5" when the primary model rejected the tile (<28 px) and
+   *  we silently retried. Also set to "gpt-5.5" by the Ark-overdue fallback. */
+  fallback_model?: string | null;
+  /** Per-evidence terminal error string ("download: ...", "llm: ..."). */
+  error?: string | null;
 }
 
 async function json<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -142,6 +168,10 @@ export const api = {
   }) => json<JobSummary>("/api/jobs", { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }),
   listModels: () => json<ModelsResponse>("/api/models"),
   startJob: (id: string) => json<JobSummary>(`/api/jobs/${id}/start`, { method: "POST" }),
+  /** Cancel an in-flight job. Kills the asyncio task, marks remaining
+   *  pending/running rows as failed("cancelled by user"), flips job status
+   *  to "cancelled". Idempotent. See POST /api/jobs/{id}/cancel. */
+  cancelJob: (id: string) => json<JobSummary>(`/api/jobs/${id}/cancel`, { method: "POST" }),
   getJob: (id: string) => json<JobSummary>(`/api/jobs/${id}`),
   listRows: (id: string, status?: string) =>
     json<JobRow[]>(`/api/jobs/${id}/rows${status ? `?status=${status}` : ""}`),
