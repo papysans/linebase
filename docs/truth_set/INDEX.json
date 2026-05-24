@@ -1,0 +1,504 @@
+[
+  {
+    "tm": "2423810",
+    "cat": "30",
+    "logo": "docs\\truth_set\\2423810_30\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\2423810_30\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\2423810_30\\pair_01\\expected.png",
+        "truth_bbox": [
+          807,
+          69,
+          844,
+          135
+        ],
+        "score": 0.9949708396203911
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\2423810_30\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\2423810_30\\pair_02\\expected.png",
+        "truth_bbox": [
+          384,
+          144,
+          411,
+          187
+        ],
+        "score": 0.8474284819566065
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\2423810_30\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\2423810_30\\pair_03\\expected.png",
+        "truth_bbox": [
+          216,
+          134,
+          238,
+          172
+        ],
+        "score": 0.8101914583546024
+      },
+      {
+        "i": 4,
+        "evidence": "docs\\truth_set\\2423810_30\\pair_04\\evidence.png",
+        "expected": "docs\\truth_set\\2423810_30\\pair_04\\expected.png",
+        "truth_bbox": [
+          160,
+          205,
+          270,
+          431
+        ],
+        "score": 0.9023599121353872
+      }
+    ]
+  },
+  {
+    "tm": "1969989",
+    "cat": "16",
+    "logo": "docs\\truth_set\\1969989_16\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_01\\expected.png",
+        "truth_bbox": [
+          132,
+          43,
+          345,
+          527
+        ],
+        "score": 1.0000000231359987
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_02\\expected.png",
+        "truth_bbox": [
+          707,
+          207,
+          737,
+          267
+        ],
+        "score": 0.5369658170251601
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_03\\expected.png",
+        "truth_bbox": [
+          168,
+          244,
+          217,
+          350
+        ],
+        "score": 0.9999999315121906
+      },
+      {
+        "i": 4,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_04\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_04\\expected.png",
+        "truth_bbox": [
+          168,
+          232,
+          216,
+          337
+        ],
+        "score": 0.9999999789861547
+      },
+      {
+        "i": 5,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_05\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_05\\expected.png",
+        "truth_bbox": [
+          200,
+          394,
+          223,
+          433
+        ],
+        "score": 1.0000000608206774
+      },
+      {
+        "i": 6,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_06\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_06\\expected.png",
+        "truth_bbox": [
+          174,
+          237,
+          220,
+          343
+        ],
+        "score": 0.9999999663407745
+      },
+      {
+        "i": 7,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_07\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_07\\expected.png",
+        "truth_bbox": [
+          30,
+          13,
+          47,
+          50
+        ],
+        "score": 0.6938193816611474
+      },
+      {
+        "i": 8,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_08\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_08\\expected.png",
+        "truth_bbox": [
+          224,
+          97,
+          253,
+          152
+        ],
+        "score": 1.000000055588942
+      },
+      {
+        "i": 9,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_09\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_09\\expected.png",
+        "truth_bbox": [
+          444,
+          598,
+          462,
+          636
+        ],
+        "score": 0.49301357798192497
+      },
+      {
+        "i": 10,
+        "evidence": "docs\\truth_set\\1969989_16\\pair_10\\evidence.png",
+        "expected": "docs\\truth_set\\1969989_16\\pair_10\\expected.png",
+        "truth_bbox": [
+          218,
+          105,
+          256,
+          166
+        ],
+        "score": 1.000000028149038
+      }
+    ]
+  },
+  {
+    "tm": "4338293",
+    "cat": "12",
+    "logo": "docs\\truth_set\\4338293_12\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\4338293_12\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\4338293_12\\pair_01\\expected.png",
+        "truth_bbox": [
+          490,
+          931,
+          509,
+          951
+        ],
+        "score": 0.5357702388919577
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\4338293_12\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\4338293_12\\pair_02\\expected.png",
+        "truth_bbox": [
+          512,
+          361,
+          562,
+          413
+        ],
+        "score": 0.9999999616552453
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\4338293_12\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\4338293_12\\pair_03\\expected.png",
+        "truth_bbox": [
+          64,
+          418,
+          200,
+          563
+        ],
+        "score": 0.9999999580846621
+      }
+    ]
+  },
+  {
+    "tm": "4827580",
+    "cat": "16",
+    "logo": "docs\\truth_set\\4827580_16\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\4827580_16\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\4827580_16\\pair_01\\expected.png",
+        "truth_bbox": [
+          882,
+          237,
+          961,
+          281
+        ],
+        "score": 0.6288664593111829
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\4827580_16\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\4827580_16\\pair_02\\expected.png",
+        "truth_bbox": [
+          611,
+          913,
+          638,
+          929
+        ],
+        "score": 0.7275412487754799
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\4827580_16\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\4827580_16\\pair_03\\expected.png",
+        "truth_bbox": [
+          295,
+          54,
+          370,
+          97
+        ],
+        "score": 0.8185113159792864
+      },
+      {
+        "i": 4,
+        "evidence": "docs\\truth_set\\4827580_16\\pair_04\\evidence.png",
+        "expected": "docs\\truth_set\\4827580_16\\pair_04\\expected.png",
+        "truth_bbox": [
+          307,
+          501,
+          397,
+          547
+        ],
+        "score": 0.9328341030918351
+      }
+    ]
+  },
+  {
+    "tm": "6433801",
+    "cat": "12",
+    "logo": "docs\\truth_set\\6433801_12\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\6433801_12\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\6433801_12\\pair_01\\expected.png",
+        "truth_bbox": [
+          380,
+          704,
+          544,
+          842
+        ],
+        "score": 1.0000000491257828
+      }
+    ]
+  },
+  {
+    "tm": "4334451",
+    "cat": "12",
+    "logo": "docs\\truth_set\\4334451_12\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\4334451_12\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\4334451_12\\pair_01\\expected.png",
+        "truth_bbox": [
+          218,
+          128,
+          415,
+          300
+        ],
+        "score": 0.9999999736108222
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\4334451_12\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\4334451_12\\pair_02\\expected.png",
+        "truth_bbox": [
+          30,
+          389,
+          249,
+          548
+        ],
+        "score": 0.9999993374246349
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\4334451_12\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\4334451_12\\pair_03\\expected.png",
+        "truth_bbox": [
+          495,
+          244,
+          945,
+          568
+        ],
+        "score": 0.9999998142610318
+      }
+    ]
+  },
+  {
+    "tm": "4601531",
+    "cat": "14",
+    "logo": "docs\\truth_set\\4601531_14\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\4601531_14\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\4601531_14\\pair_01\\expected.png",
+        "truth_bbox": [
+          340,
+          284,
+          587,
+          378
+        ],
+        "score": 0.9999998156123003
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\4601531_14\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\4601531_14\\pair_02\\expected.png",
+        "truth_bbox": [
+          341,
+          158,
+          553,
+          249
+        ],
+        "score": 0.9999988835623428
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\4601531_14\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\4601531_14\\pair_03\\expected.png",
+        "truth_bbox": [
+          337,
+          470,
+          725,
+          610
+        ],
+        "score": 0.9999992163633429
+      }
+    ]
+  },
+  {
+    "tm": "3089225",
+    "cat": "25",
+    "logo": "docs\\truth_set\\3089225_25\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\3089225_25\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\3089225_25\\pair_01\\expected.png",
+        "truth_bbox": [
+          1075,
+          1594,
+          1132,
+          1628
+        ],
+        "score": 0.6095713433109713
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\3089225_25\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\3089225_25\\pair_02\\expected.png",
+        "truth_bbox": [
+          507,
+          742,
+          921,
+          1149
+        ],
+        "score": 0.7567954493606874
+      },
+      {
+        "i": 3,
+        "evidence": "docs\\truth_set\\3089225_25\\pair_03\\evidence.png",
+        "expected": "docs\\truth_set\\3089225_25\\pair_03\\expected.png",
+        "truth_bbox": [
+          551,
+          734,
+          630,
+          814
+        ],
+        "score": 0.7712281224135246
+      },
+      {
+        "i": 4,
+        "evidence": "docs\\truth_set\\3089225_25\\pair_04\\evidence.png",
+        "expected": "docs\\truth_set\\3089225_25\\pair_04\\expected.png",
+        "truth_bbox": [
+          58,
+          615,
+          224,
+          733
+        ],
+        "score": 0.8472146224642738
+      }
+    ]
+  },
+  {
+    "tm": "1494172",
+    "cat": "14",
+    "logo": "docs\\truth_set\\1494172_14\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\1494172_14\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\1494172_14\\pair_01\\expected.png",
+        "truth_bbox": [
+          304,
+          139,
+          330,
+          159
+        ],
+        "score": 0.42832179744167953
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\1494172_14\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\1494172_14\\pair_02\\expected.png",
+        "truth_bbox": [
+          100,
+          46,
+          126,
+          63
+        ],
+        "score": 0.5705931426579395
+      }
+    ]
+  },
+  {
+    "tm": "1044246",
+    "cat": "25",
+    "logo": "docs\\truth_set\\1044246_25\\logo.png",
+    "pairs": [
+      {
+        "i": 1,
+        "evidence": "docs\\truth_set\\1044246_25\\pair_01\\evidence.png",
+        "expected": "docs\\truth_set\\1044246_25\\pair_01\\expected.png",
+        "truth_bbox": [
+          288,
+          284,
+          334,
+          301
+        ],
+        "score": 0.37030102884745997
+      },
+      {
+        "i": 2,
+        "evidence": "docs\\truth_set\\1044246_25\\pair_02\\evidence.png",
+        "expected": "docs\\truth_set\\1044246_25\\pair_02\\expected.png",
+        "truth_bbox": [
+          804,
+          4,
+          838,
+          25
+        ],
+        "score": 0.6433728800566554
+      }
+    ]
+  }
+]

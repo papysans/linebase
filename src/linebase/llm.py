@@ -18,16 +18,60 @@ and the rest of the batch continues. See spec/backend/llm-gotchas.md
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import mimetypes
 import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
 from openai import OpenAI
+from PIL import Image
 
 from linebase.config import ProviderConfig, Settings
+
+# Longest-side budget (pixels) for what we ship to a vision model. Above this
+# we downscale before encoding to base64, then scale the returned bbox back
+# into original-image coords. This was added in iter 6.1 after both Qwen3-VL
+# and GLM-4.5V were observed returning bboxes in their *post-resize* internal
+# coordinate frame (~1280 px), which mapped to a wildly wrong region when the
+# crop step used the original 1836x2376 image. 1280 is conservative — well
+# under every provider's documented vision-input cap and well above the
+# resolution needed to read product photos.
+_MAX_VLM_PIXELS = 1280
+
+
+def _resize_for_vlm(path: Path) -> tuple[Path, float]:
+    """Return (path_to_send, scale_factor).
+
+    If the image's longest side <= `_MAX_VLM_PIXELS`, return the original
+    path unchanged with `scale_factor=1.0`. Otherwise write a downscaled
+    JPEG/PNG copy to a tempfile and return `(tempfile_path, scale)` where
+    `scale = new_longest / old_longest`. Callers MUST divide any bbox
+    returned by the model by `scale` to recover original-image coords, and
+    are responsible for unlinking the tempfile when they're done with it
+    (the helper does not own its lifetime).
+    """
+    with Image.open(path) as img:
+        w, h = img.size
+        longest = max(w, h)
+        if longest <= _MAX_VLM_PIXELS:
+            return path, 1.0
+        scale = _MAX_VLM_PIXELS / longest
+        new_size = (round(w * scale), round(h * scale))
+        resized = img.convert("RGB").resize(new_size, Image.LANCZOS)
+    suffix = path.suffix or ".png"
+    fd, tmp_name = tempfile.mkstemp(suffix=suffix)
+    os.close(fd)
+    tmp = Path(tmp_name)
+    fmt = "JPEG" if suffix.lower() in {".jpg", ".jpeg"} else "PNG"
+    if fmt == "JPEG":
+        resized.save(tmp, format=fmt, quality=92)
+    else:
+        resized.save(tmp, format=fmt)
+    return tmp, scale
 
 
 def _default_timeout_s() -> float:
@@ -330,59 +374,157 @@ def match_logo_in_photo(
     - `client` is only used when both `provider` and `model` are unset (legacy path).
     - `timeout` (seconds) is passed to the OpenAI SDK per-call.
     """
+    version, prompt = _active_prompt()
+    return _run_match_call(
+        logo_path=logo_path,
+        photo_path=photo_path,
+        prompt_text=prompt,
+        prompt_version=version,
+        settings=settings,
+        client=client,
+        model=model,
+        provider=provider,
+        timeout=timeout,
+    )
+
+
+def match_logo_with_feedback(
+    logo_path: Path,
+    photo_path: Path,
+    *,
+    prior_bbox: tuple[int, int, int, int],
+    prior_reason: str,
+    verify_reason: str,
+    settings: Settings | None = None,
+    client: OpenAI | None = None,
+    model: str | None = None,
+    provider: ProviderConfig | None = None,
+    timeout: float | None = None,
+) -> MatchResult:
+    """Pass-3 retry: re-ask the matcher after a blank-crop verify rejection.
+
+    Renders prompts/v_4_retry.md with the prior bbox + verifier reason baked
+    in, sends (logo, photo) again, and parses the response with the same
+    JSON contract as `match_logo_in_photo`. `prior_reason` is currently kept
+    for caller debuggability (the prompt itself ignores it — the model is
+    instructed to start fresh, not be primed by old reasoning).
+    """
+    del prior_reason  # noqa: B018 — accepted for symmetry but intentionally unused
+    target = PROMPTS_DIR / "v_4_retry.md"
+    if not target.exists():
+        raise FileNotFoundError(f"Required retry prompt missing: {target}")
+    text = target.read_text(encoding="utf-8")
+    if text.startswith("---"):  # strip YAML front-matter
+        end = text.find("\n---", 3)
+        if end != -1:
+            text = text[end + 4 :].lstrip("\n")
+    px1, py1, px2, py2 = prior_bbox
+    prompt = (
+        text.replace("%PRIOR_X1", str(int(px1)))
+        .replace("%PRIOR_Y1", str(int(py1)))
+        .replace("%PRIOR_X2", str(int(px2)))
+        .replace("%PRIOR_Y2", str(int(py2)))
+        .replace("%VERIFY_REASON", verify_reason.replace('"', "'"))
+    )
+    return _run_match_call(
+        logo_path=logo_path,
+        photo_path=photo_path,
+        prompt_text=prompt,
+        prompt_version="4_retry",
+        settings=settings,
+        client=client,
+        model=model,
+        provider=provider,
+        timeout=timeout,
+    )
+
+
+def _run_match_call(
+    *,
+    logo_path: Path,
+    photo_path: Path,
+    prompt_text: str,
+    prompt_version: str,
+    settings: Settings | None,
+    client: OpenAI | None,
+    model: str | None,
+    provider: ProviderConfig | None,
+    timeout: float | None,
+) -> MatchResult:
+    """Shared body for `match_logo_in_photo` and `match_logo_with_feedback`.
+
+    Sends (prompt + LOGO + PHOTO), parses the JSON response with the same
+    stricter-retry-on-parse-error contract, and packs the result into a
+    MatchResult. Extracted as a helper so the retry variant doesn't have to
+    duplicate ~70 lines of message-building + JSON parsing.
+    """
     settings = settings or Settings.from_env()
     use_model = model or settings.model
-
-    # When the caller supplied a client and didn't override model/provider, keep
-    # the legacy fast path (no client churn between calls).
     if client is None or model is not None or provider is not None:
         client = _build_client(settings, provider, use_model)
 
-    version, prompt = _active_prompt()
+    # Iter 6.1 — pre-resize both images to a known longest-side budget so the
+    # model's internal coordinate frame is predictable, then scale the bbox
+    # it returns back into the ORIGINAL photo's pixel space.
+    with Image.open(photo_path) as _img:
+        orig_w, orig_h = _img.size
 
-    logo_url = _image_to_data_url(logo_path)
-    photo_url = _image_to_data_url(photo_path)
+    send_logo_path, _logo_scale = _resize_for_vlm(logo_path)
+    send_photo_path, photo_scale = _resize_for_vlm(photo_path)
 
-    user_content = [
-        {"type": "text", "text": prompt},
-        {"type": "text", "text": "Image 1 (LOGO):"},
-        {"type": "image_url", "image_url": {"url": logo_url}},
-        {"type": "text", "text": "Image 2 (PHOTO):"},
-        {"type": "image_url", "image_url": {"url": photo_url}},
-    ]
-    messages: list[dict] = [{"role": "user", "content": user_content}]
-
-    completion = _create_completion(client, use_model, messages, timeout)
-    raw = completion.choices[0].message.content or ""
-    usage = _usage_dict(completion)
-
-    retry_count = 0
     try:
-        data = _parse_json_response(raw)
-    except (ValueError, json.JSONDecodeError):
-        # One stricter retry, with the original raw response + new instruction.
-        retry_count = 1
-        retry_messages = messages + [
-            {"role": "assistant", "content": raw},
-            {"role": "user", "content": _STRICT_RETRY_MSG},
+        user_content = [
+            {"type": "text", "text": prompt_text},
+            {"type": "text", "text": "Image 1 (LOGO):"},
+            {"type": "image_url", "image_url": {"url": _image_to_data_url(send_logo_path)}},
+            {"type": "text", "text": "Image 2 (PHOTO):"},
+            {"type": "image_url", "image_url": {"url": _image_to_data_url(send_photo_path)}},
         ]
-        retry_completion = _create_completion(client, use_model, retry_messages, timeout)
-        retry_raw = retry_completion.choices[0].message.content or ""
-        # Accumulate token usage from the retry too — caller's cost accounting
-        # must see all calls.
-        retry_usage = _usage_dict(retry_completion)
-        usage = _sum_usage(usage, retry_usage)
-        # If even the retry blows up, let the exception escape.
-        data = _parse_json_response(retry_raw)
-        raw = raw + "\n---retry---\n" + retry_raw
+        messages: list[dict] = [{"role": "user", "content": user_content}]
+        completion = _create_completion(client, use_model, messages, timeout)
+        raw = completion.choices[0].message.content or ""
+        usage = _usage_dict(completion)
+
+        retry_count = 0
+        try:
+            data = _parse_json_response(raw)
+        except (ValueError, json.JSONDecodeError):
+            retry_count = 1
+            retry_messages = messages + [
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": _STRICT_RETRY_MSG},
+            ]
+            retry_completion = _create_completion(client, use_model, retry_messages, timeout)
+            retry_raw = retry_completion.choices[0].message.content or ""
+            usage = _sum_usage(usage, _usage_dict(retry_completion))
+            data = _parse_json_response(retry_raw)
+            raw = raw + "\n---retry---\n" + retry_raw
+    finally:
+        # Clean up the resized tempfiles, if any. Never crash on cleanup —
+        # OS-level transient unlink failures must not mask the API result.
+        for sent_path, src_path in (
+            (send_logo_path, logo_path),
+            (send_photo_path, photo_path),
+        ):
+            if sent_path != src_path:
+                with contextlib.suppress(OSError):
+                    sent_path.unlink(missing_ok=True)
 
     bbox_raw = data.get("bbox")
     bbox: tuple[int, int, int, int] | None = None
     if bbox_raw and isinstance(bbox_raw, (list, tuple)) and len(bbox_raw) == 4:
         try:
-            bbox = tuple(int(v) for v in bbox_raw)  # type: ignore[assignment]
+            coords = [float(v) for v in bbox_raw]
         except (TypeError, ValueError):
-            bbox = None
+            coords = None
+        if coords is not None:
+            if photo_scale != 1.0:
+                coords = [c / photo_scale for c in coords]
+            x1 = max(0, min(int(round(coords[0])), orig_w - 1))
+            y1 = max(0, min(int(round(coords[1])), orig_h - 1))
+            x2 = max(x1 + 1, min(int(round(coords[2])), orig_w))
+            y2 = max(y1 + 1, min(int(round(coords[3])), orig_h))
+            bbox = (x1, y1, x2, y2)
 
     def _scalar(key: str) -> float:
         v = data.get(key)
@@ -400,7 +542,7 @@ def match_logo_in_photo(
         confidence=float(data.get("confidence", 0.0)),
         reason=str(data.get("reason", "")),
         raw_response=raw,
-        prompt_version=version,
+        prompt_version=prompt_version,
         model=use_model,
         usage=usage,
         clarity=_scalar("clarity"),
@@ -468,37 +610,54 @@ def verify_crop(
 
     version, prompt = _active_verify_prompt()
 
-    logo_url = _image_to_data_url(logo_path)
-    crop_url = _image_to_data_url(cropped_path)
+    # Iter 6.1 — apply the same pre-resize to the candidate crop so the
+    # model's `suggested_bbox` (in CROP coords) is interpreted in a known
+    # frame. We scale `suggested_bbox` back to the original crop's pixels
+    # before returning so downstream callers can translate to photo coords
+    # without knowing anything about the resize.
+    send_logo_path, _logo_scale = _resize_for_vlm(logo_path)
+    send_crop_path, crop_scale = _resize_for_vlm(cropped_path)
 
-    messages: list[dict] = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt},
-                {"type": "text", "text": "Image 1 (LOGO):"},
-                {"type": "image_url", "image_url": {"url": logo_url}},
-                {"type": "text", "text": "Image 2 (CANDIDATE CROP):"},
-                {"type": "image_url", "image_url": {"url": crop_url}},
-            ],
-        }
-    ]
-
-    completion = _create_completion(client, use_model, messages, timeout)
-
-    raw = completion.choices[0].message.content or ""
     try:
-        data = _parse_json_response(raw)
-    except (ValueError, json.JSONDecodeError):
-        # One stricter retry — same robustness contract as `match_logo_in_photo`.
-        retry_messages = messages + [
-            {"role": "assistant", "content": raw},
-            {"role": "user", "content": _STRICT_RETRY_MSG},
+        logo_url = _image_to_data_url(send_logo_path)
+        crop_url = _image_to_data_url(send_crop_path)
+
+        messages: list[dict] = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "text", "text": "Image 1 (LOGO):"},
+                    {"type": "image_url", "image_url": {"url": logo_url}},
+                    {"type": "text", "text": "Image 2 (CANDIDATE CROP):"},
+                    {"type": "image_url", "image_url": {"url": crop_url}},
+                ],
+            }
         ]
-        retry_completion = _create_completion(client, use_model, retry_messages, timeout)
-        retry_raw = retry_completion.choices[0].message.content or ""
-        data = _parse_json_response(retry_raw)
-        raw = raw + "\n---retry---\n" + retry_raw
+
+        completion = _create_completion(client, use_model, messages, timeout)
+
+        raw = completion.choices[0].message.content or ""
+        try:
+            data = _parse_json_response(raw)
+        except (ValueError, json.JSONDecodeError):
+            # One stricter retry — same robustness contract as `match_logo_in_photo`.
+            retry_messages = messages + [
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": _STRICT_RETRY_MSG},
+            ]
+            retry_completion = _create_completion(client, use_model, retry_messages, timeout)
+            retry_raw = retry_completion.choices[0].message.content or ""
+            data = _parse_json_response(retry_raw)
+            raw = raw + "\n---retry---\n" + retry_raw
+    finally:
+        for sent_path, src_path in (
+            (send_logo_path, logo_path),
+            (send_crop_path, cropped_path),
+        ):
+            if sent_path != src_path:
+                with contextlib.suppress(OSError):
+                    sent_path.unlink(missing_ok=True)
 
     fit_raw = str(data.get("fit", "wrong")).strip().lower()
     fit = fit_raw if fit_raw in _VALID_FITS else "wrong"
@@ -507,7 +666,15 @@ def verify_crop(
     suggested: tuple[int, int, int, int] | None = None
     if sugg_raw and isinstance(sugg_raw, (list, tuple)) and len(sugg_raw) == 4:
         try:
-            suggested = (int(sugg_raw[0]), int(sugg_raw[1]), int(sugg_raw[2]), int(sugg_raw[3]))
+            sf = [float(v) for v in sugg_raw]
+            if crop_scale != 1.0:
+                sf = [c / crop_scale for c in sf]
+            suggested = (
+                int(round(sf[0])),
+                int(round(sf[1])),
+                int(round(sf[2])),
+                int(round(sf[3])),
+            )
             # Enforce x1<x2, y1<y2 — otherwise drop the suggestion.
             if suggested[0] >= suggested[2] or suggested[1] >= suggested[3]:
                 suggested = None

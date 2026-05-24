@@ -124,6 +124,12 @@ class CreateJobRequest(BaseModel):
     # Per the review-loop policy in memory/feedback_review_loop.md: prod batches
     # default ON; cost overhead is worth catching wrong-identity false-positives.
     verify_loop: bool = True
+    # Iter 6.3 — opt-in 3x3 tile-scan fallback for small logos buried in busy
+    # photos. When True, the pipeline tiles each evidence whose longest side
+    # > 1500 px into a 3x3 grid and re-tries the match per tile after the
+    # primary path fails / rejects verification. Costs 9 extra LLM calls per
+    # affected evidence. Default OFF for backward compat.
+    tile_scan: bool = False
 
 
 def _resolve_rows(upload: store.Upload, req: CreateJobRequest) -> list[dict]:
@@ -172,6 +178,7 @@ def create_job(req: CreateJobRequest) -> dict:
         sample_kind=req.sample_kind, sample_params=req.sample_params,
         model=model_value,
         verify_loop=1 if req.verify_loop else 0,
+        tile_scan=1 if req.tile_scan else 0,
     )
     rows_data = _resolve_rows(upload, req)
     # filter out blatantly empty rows (no logo URL AND no evidence)

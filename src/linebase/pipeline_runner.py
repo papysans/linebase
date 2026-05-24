@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import tempfile
 import time
 from collections import defaultdict
 from contextlib import suppress
@@ -30,8 +31,8 @@ from linebase.config import Settings
 from linebase.crop import crop_to_bbox
 from linebase.fetch import fetch
 from linebase.io_excel import iter_rows
-from linebase.llm import MatchResult, match_logo_in_photo
-from linebase.verify_loop import VerifyResult, match_with_verify
+from linebase.llm import MatchResult, match_logo_in_photo, verify_crop
+from linebase.verify_loop import VerifyResult, _bbox_blank_stats, match_with_verify
 
 _log = logging.getLogger(__name__)
 
@@ -228,7 +229,17 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                     ev_bbox = [float(x) for x in raw_bbox]
                 except (TypeError, ValueError):
                     ev_bbox = None
-            match_meta[url] = {
+            # Iter 5 retry surface: only emit `retried` / `retry_bbox` when the
+            # backing pipeline actually fired the Pass-3 retry, so older rows
+            # don't acquire stray null keys in their API shape.
+            retry_bbox_raw = m.get("retry_bbox")
+            retry_bbox_proj: list[float] | None = None
+            if isinstance(retry_bbox_raw, (list, tuple)) and len(retry_bbox_raw) == 4:
+                try:
+                    retry_bbox_proj = [float(x) for x in retry_bbox_raw]
+                except (TypeError, ValueError):
+                    retry_bbox_proj = None
+            entry: dict[str, Any] = {
                 "found": m.get("found"),
                 "confidence": _f(m.get("confidence")),
                 "clarity": _f(m.get("clarity")),
@@ -243,6 +254,56 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                 "fallback_model": m.get("fallback_model"),
                 "error": m.get("error"),
             }
+            if m.get("retried"):
+                entry["retried"] = True
+                if m.get("retry_reason"):
+                    entry["retry_reason"] = m.get("retry_reason")
+                if retry_bbox_proj is not None:
+                    entry["retry_bbox"] = retry_bbox_proj
+            # Iter 7 — Pass-1 variance pre-gate provenance. Only emit when
+            # the gate actually tripped so older rows don't grow null noise.
+            if m.get("pass1_blank_reject"):
+                entry["pass1_blank_reject"] = True
+                entry["pass1_blank_std"] = _f(m.get("pass1_blank_std"))
+                entry["pass1_blank_white"] = _f(m.get("pass1_blank_white"))
+                raw_orig = m.get("pass1_original_bbox")
+                if isinstance(raw_orig, (list, tuple)) and len(raw_orig) == 4:
+                    with suppress(TypeError, ValueError):
+                        entry["pass1_original_bbox"] = [float(x) for x in raw_orig]
+                if m.get("pass1_original_reason"):
+                    entry["pass1_original_reason"] = m.get("pass1_original_reason")
+            # Iter 6.3 — surface tile-scan provenance when the fallback fired.
+            # Only emit these keys when actually set so older rows don't grow
+            # null noise in the API shape.
+            # Iter 6.4 — also surface `tile_attempts` (how many tiles produced
+            # a non-degenerate found-candidate) and `tile_verified_idx` (which
+            # tile won the verify pass, when verify ran inside tile-scan).
+            if m.get("tile_scanned"):
+                entry["tile_scanned"] = True
+                tile_origin = m.get("tile_origin")
+                if isinstance(tile_origin, (list, tuple)) and len(tile_origin) == 2:
+                    with suppress(TypeError, ValueError):
+                        entry["tile_origin"] = [int(tile_origin[0]), int(tile_origin[1])]
+                if m.get("tile_index"):
+                    entry["tile_index"] = m.get("tile_index")
+                ta_raw = m.get("tile_attempts")
+                if ta_raw is not None:
+                    with suppress(TypeError, ValueError):
+                        entry["tile_attempts"] = int(ta_raw)
+                if m.get("tile_verified_idx"):
+                    entry["tile_verified_idx"] = m.get("tile_verified_idx")
+                # Iter 6.5 — surface verify_upscale only when non-default
+                # (>1), so older rows that pre-date the field don't grow a
+                # noisy `verify_upscale: 1` key in their API shape.
+                vu_raw = m.get("verify_upscale")
+                if vu_raw is not None:
+                    try:
+                        vu = int(vu_raw)
+                        if vu > 1:
+                            entry["verify_upscale"] = vu
+                    except (TypeError, ValueError):
+                        pass
+            match_meta[url] = entry
     d["match_meta"] = match_meta
     return d
 
@@ -258,6 +319,10 @@ def _job_to_dict(job: store.Job) -> dict[str, Any]:
     # frontend can use it directly in conditionals without 0/1 vs true/false
     # ambiguity.
     d["verify_loop"] = bool(getattr(job, "verify_loop", 0))
+    # tile_scan: same int → bool projection as verify_loop. Surfaces the
+    # iter-6.3 fallback toggle on the job summary so the frontend can render
+    # a "Tile scan: ON" pill and show tile-scanned matches with provenance.
+    d["tile_scan"] = bool(getattr(job, "tile_scan", 0))
     return d
 
 
@@ -405,6 +470,24 @@ _SANITY_MIN_AREA_RATIO = 0.005
 _SANITY_BLANK_BRIGHTNESS = 240.0
 _SANITY_BLANK_MAX_STDDEV = 25.0
 
+# Iter 7 — Pass-1 variance pre-gate thresholds. Applied as a POST-filter on
+# Pass-1's returned bbox region (unpadded, in original-photo coords), BEFORE
+# tile-scan / verify-verdict / crop fire. Empirical justification (truth set,
+# Qwen3-VL-32B-Instruct, verify OFF, 19 pairs):
+#   - All 6 hits had crop std ≥ 13 AND white_ratio ≤ 0.74.
+#   - The pair (std < 10 OR white_ratio > 0.85) correctly killed 6 of 12 wrong
+#     predictions (pure background / UI element / blank slider) without losing
+#     any hit. Halves the wrong-region rate while keeping recall intact.
+#
+# These are STRICTER than verify_loop's iter-5 pre-gate constants
+# (`_PRE_GATE_STD = 15.0`, `_PRE_GATE_WHITE_RATIO = 0.7`) BY DESIGN: the inner
+# gate operates on the +20% padded crop the verifier would see, which has more
+# margin and thus more white ratio. The outer gate looks at the raw Pass-1
+# bbox region — empty white space inside the model's prediction is a much
+# louder signal than a slightly white-bordered padded crop.
+_PASS1_BLANK_STD_THRESHOLD = 10.0
+_PASS1_BLANK_WHITE_THRESHOLD = 0.85
+
 
 def _crop_sanity_check(crop_path: Path, evidence_path: Path) -> str | None:
     """Return a short rejection reason string when the crop looks bad, else None.
@@ -446,6 +529,308 @@ def _crop_sanity_check(crop_path: Path, evidence_path: Path) -> str | None:
     ):
         return f"crop_mostly_blank (brightness={mean_brightness:.0f}, std={max_std:.0f})"
     return None
+
+
+# --- Tile-scan fallback ---------------------------------------------------
+# Iter 6.3 — when a primary match call fails (or its verify rejected the bbox)
+# on a large evidence photo, we crop the photo into a 3x3 grid, run the
+# matcher on each tile, and pick the highest-confidence tile that found the
+# logo. Bboxes returned in tile-coords are translated back to original-photo
+# coords. Costs up to 9 extra LLM calls per evidence — strictly opt-in.
+#
+# Iter 6.4 — Qwen3-VL was observed returning degenerate bboxes (width=1 or
+# height=1) at conf=0.95 on some tiles, beating a non-degenerate conf=0.90
+# real match on a sibling tile. Two changes:
+#   1. Filter degenerate candidates (w<28 or h<28) BEFORE they reach selection
+#      — Qwen3-VL's image preprocessor rejects tiles below this threshold on
+#      the downstream verify call anyway, so they can never produce a usable
+#      crop. Below-28 candidates are silently dropped.
+#   2. When `verify_enabled=True`, verify the top-3 candidates by confidence
+#      and return the first one that the verifier accepts. If all three fail
+#      verify, return None (tile-scan can't recover this evidence; the row
+#      stays in needs_review). This avoids the previous trap where the
+#      highest-confidence-but-degenerate candidate would silently be chosen.
+
+_TILE_SCAN_MIN_LONGEST_SIDE = 1500  # below this the global pass is fine
+_TILE_SCAN_MIN_CONFIDENCE = 0.6     # per-tile floor before we accept a candidate
+_TILE_SCAN_MIN_BBOX_DIM = 28        # Qwen3-VL preprocessor rejects sides < 28 px
+# Iter 6.5 — bumped from 3 to 5: with 9 tiles, top-5 isn't much more expensive
+# (5 verify calls vs 3) and gives genuine recall headroom when 3 false-positive
+# tiles push the real answer down to rank 4.
+_TILE_SCAN_VERIFY_TOP_N = 5         # how many top candidates to send through verify
+# Iter 6.5 — lowered from 0.6 to 0.4. Tile-scan crops are inherently smaller and
+# noisier than full-photo crops; the verifier returns lower confidence on them
+# even when the match is correct. We compensate by accepting lower verify
+# confidence to retain real-but-borderline matches.
+_TILE_SCAN_VERIFY_THRESHOLD = 0.4   # verify-confidence floor when verify is on
+# Iter 6.5 — small-crop upscale before verify. Below this longest-side (px) the
+# crop gets a LANCZOS upscale so the verifier model sees enough detail to
+# accept real patches. Threshold + math match `_maybe_upscale_for_verify`.
+_TILE_SCAN_UPSCALE_THRESHOLD = 400
+
+
+def _upscale_factor_for(longest: int) -> int:
+    """Pure helper: integer scale factor for a crop with `longest`-px longest side.
+
+    Contract: returns 1 when no upscale is needed; otherwise the smallest
+    integer ``k`` such that ``k * longest >= 400`` (i.e. just enough to push
+    the longest side up to the threshold), floored at 4 for tiny crops
+    (< 100 px) so the verifier always sees at least 4x detail on a small patch.
+    """
+    if longest >= _TILE_SCAN_UPSCALE_THRESHOLD:
+        return 1
+    if longest < 100:
+        return 4
+    # ceil-divide: math.ceil(400/longest) without importing math.
+    return (_TILE_SCAN_UPSCALE_THRESHOLD + longest - 1) // longest
+
+
+def _maybe_upscale_for_verify(crop_path: Path) -> Path:
+    """If crop is < 400 px on longest side, write a LANCZOS upscale to a new
+    tempfile and return that path. Otherwise return ``crop_path`` unchanged.
+
+    Caller is responsible for cleaning up the returned tempfile when the path
+    differs from the input. Scale factor comes from `_upscale_factor_for`.
+    """
+    img = Image.open(crop_path)
+    w, h = img.size
+    longest = max(w, h)
+    scale = _upscale_factor_for(longest)
+    if scale <= 1:
+        return crop_path
+    new_size = (w * scale, h * scale)
+    upscaled = img.convert("RGB").resize(new_size, Image.LANCZOS)
+    fd, p = tempfile.mkstemp(suffix=crop_path.suffix or ".png")
+    os.close(fd)
+    tmp = Path(p)
+    save_fmt = "JPEG" if crop_path.suffix.lower() in {".jpg", ".jpeg"} else "PNG"
+    if save_fmt == "JPEG":
+        upscaled.save(tmp, format=save_fmt, quality=92)
+    else:
+        upscaled.save(tmp, format=save_fmt)
+    return tmp
+
+
+def _translate_tile_bbox(
+    tile_bbox: tuple[int, int, int, int],
+    ox: int,
+    oy: int,
+    photo_w: int,
+    photo_h: int,
+) -> tuple[int, int, int, int]:
+    """Translate a tile-local bbox to ORIGINAL photo coords, clamped to bounds."""
+    bx1, by1, bx2, by2 = tile_bbox
+    gx1 = max(0, min(photo_w - 1, ox + int(bx1)))
+    gy1 = max(0, min(photo_h - 1, oy + int(by1)))
+    gx2 = max(gx1 + 1, min(photo_w, ox + int(bx2)))
+    gy2 = max(gy1 + 1, min(photo_h, oy + int(by2)))
+    return gx1, gy1, gx2, gy2
+
+
+def _build_tile_result(
+    tile_res: MatchResult,
+    global_bbox: tuple[int, int, int, int],
+    ox: int,
+    oy: int,
+    ty: int,
+    tx: int,
+) -> MatchResult:
+    """Wrap the winning tile's MatchResult in a new one with bbox in photo coords."""
+    return MatchResult(
+        found=True,
+        bbox=global_bbox,
+        confidence=tile_res.confidence,
+        reason=f"[tile-scan r{ty}c{tx} @ {ox},{oy}] {tile_res.reason}",
+        raw_response=tile_res.raw_response,
+        prompt_version=tile_res.prompt_version,
+        model=tile_res.model,
+        usage=tile_res.usage,
+        clarity=tile_res.clarity,
+        completeness=tile_res.completeness,
+        isolation=tile_res.isolation,
+    )
+
+
+def _tile_scan(
+    logo_path: Path,
+    photo_path: Path,
+    *,
+    settings: Settings,
+    model: str,
+    verify_enabled: bool = False,
+    verify_model: str | None = None,
+) -> tuple[MatchResult | None, dict[str, Any], float]:
+    """Crop `photo_path` into a 3x3 grid, match each tile, return the best.
+
+    Returns `(match_result_or_None, provenance_dict, llm_cost_delta)`.
+
+    Provenance always carries `tile_scanned: True` when at least one tile was
+    actually processed, plus `tile_attempts: <n>` (how many tiles returned a
+    `found=True` candidate that survived the degenerate-bbox + confidence
+    filters). When `verify_enabled=True` and a tile won verify, provenance
+    also carries `tile_origin` / `tile_index` / `tile_verified_idx` of the
+    winner. When `verify_enabled=False`, the highest-confidence non-degenerate
+    candidate is returned (no verify call), and `tile_origin` / `tile_index`
+    reflect its tile.
+
+    `llm_cost_delta` is the sum of per-tile + per-verify call costs.
+
+    The returned MatchResult's bbox is already translated back to ORIGINAL
+    photo coordinates and clamped to the photo's bounds.
+    """
+    with Image.open(photo_path) as img:
+        W, H = img.size
+    if max(W, H) <= _TILE_SCAN_MIN_LONGEST_SIDE:
+        return None, {}, 0.0
+
+    tw = max(1, W // 3)
+    th = max(1, H // 3)
+    suffix = photo_path.suffix or ".png"
+
+    # Each entry: (confidence, tile_match_result, tile_origin_x, tile_origin_y, tx, ty)
+    candidates: list[tuple[float, MatchResult, int, int, int, int]] = []
+    cost_delta = 0.0
+    with Image.open(photo_path) as src:
+        for ty in range(3):
+            for tx in range(3):
+                x0 = tx * tw
+                y0 = ty * th
+                x1 = W if tx == 2 else min(W, x0 + tw)
+                y1 = H if ty == 2 else min(H, y0 + th)
+                tile_img = src.crop((x0, y0, x1, y1))
+                fd, tmp_name = tempfile.mkstemp(suffix=suffix)
+                os.close(fd)
+                tile_path = Path(tmp_name)
+                try:
+                    tile_img.save(tile_path)
+                    try:
+                        res = match_logo_in_photo(
+                            logo_path, tile_path,
+                            settings=settings, model=model,
+                        )
+                    except Exception as e:
+                        _log.debug("tile-scan tile r%dc%d failed: %s", ty, tx, e)
+                        continue
+                    cost_delta += cost_estimate(res.usage, model=model)
+                    # Filter: must be a real found result with a valid bbox
+                    # AND non-degenerate sides (>= 28 px on both axes) AND
+                    # above the per-tile confidence floor. Qwen3-VL has been
+                    # observed returning width=1 / height=1 bboxes at high
+                    # confidence — those crops are unusable downstream
+                    # (verify itself rejects them with the same <28 error).
+                    if not (res.found and res.bbox is not None
+                            and res.confidence >= _TILE_SCAN_MIN_CONFIDENCE):
+                        continue
+                    bx1, by1, bx2, by2 = res.bbox
+                    bw, bh = bx2 - bx1, by2 - by1
+                    if bw < _TILE_SCAN_MIN_BBOX_DIM or bh < _TILE_SCAN_MIN_BBOX_DIM:
+                        _log.debug(
+                            "tile-scan tile r%dc%d skipped: degenerate bbox %dx%d at conf=%.2f",
+                            ty, tx, bw, bh, res.confidence,
+                        )
+                        continue
+                    candidates.append((res.confidence, res, x0, y0, tx, ty))
+                finally:
+                    with suppress(OSError):
+                        tile_path.unlink(missing_ok=True)
+
+    if not candidates:
+        return None, {"tile_scanned": True, "tile_attempts": 0}, cost_delta
+
+    # Highest confidence wins; on a tie Python's sort is stable so we
+    # implicitly prefer earlier-iterated tiles (row-major, top-left first).
+    candidates.sort(key=lambda c: c[0], reverse=True)
+
+    # Verify-disabled path: pick the highest-confidence non-degenerate
+    # candidate directly. This preserves the iter-6.3 behavior for runs
+    # without verify_loop enabled.
+    if not verify_enabled:
+        _, best, ox, oy, tx, ty = candidates[0]
+        global_bbox = _translate_tile_bbox(best.bbox, ox, oy, W, H)  # type: ignore[arg-type]
+        provenance = {
+            "tile_scanned": True,
+            "tile_attempts": len(candidates),
+            "tile_origin": [int(ox), int(oy)],
+            "tile_index": f"r{ty}c{tx}",
+        }
+        return _build_tile_result(best, global_bbox, ox, oy, ty, tx), provenance, cost_delta
+
+    # Verify-enabled path: try the top-N candidates in confidence order and
+    # return the first that the verifier accepts. The bbox we verify is the
+    # global (original-photo) bbox + 20% pad, so the verifier sees the
+    # candidate in the same coordinate frame as the rest of the pipeline.
+    #
+    # Iter 6.5 — before sending the crop to verify, upscale it with LANCZOS
+    # when it's too small (< 400 px longest side). Real patches in busy
+    # full-resolution photos are routinely 200-300 px wide; without upscale
+    # the verifier rejects them as too noisy/blurry. The upscale runs on the
+    # PHYSICAL CROP FILE (not the bbox math), so the rest of the pipeline
+    # still sees the original-coord bbox for downstream cropping/display.
+    eff_verify_model = verify_model or settings.review_model
+    for _conf, res, ox, oy, tx, ty in candidates[:_TILE_SCAN_VERIFY_TOP_N]:
+        global_bbox = _translate_tile_bbox(res.bbox, ox, oy, W, H)  # type: ignore[arg-type]
+        fd, cname = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        crop_path = Path(cname)
+        upscaled_path: Path | None = None
+        try:
+            try:
+                crop_to_bbox(photo_path, global_bbox, crop_path, pad_ratio=0.20)
+            except Exception as ce:
+                _log.debug(
+                    "tile-scan verify-crop failed for r%dc%d: %s", ty, tx, ce,
+                )
+                continue
+            # Compute upscale factor for provenance + verify input. Always read
+            # the SOURCE crop's dimensions first so the recorded factor matches
+            # what the upscale helper actually did.
+            with Image.open(crop_path) as _cimg:
+                _cw, _ch = _cimg.size
+            upscale_factor = _upscale_factor_for(max(_cw, _ch))
+            verify_input_path = _maybe_upscale_for_verify(crop_path)
+            if verify_input_path != crop_path:
+                upscaled_path = verify_input_path
+            try:
+                ans = verify_crop(
+                    logo_path, verify_input_path,
+                    settings=settings, model=eff_verify_model,
+                )
+            except Exception as ve:
+                _log.debug(
+                    "tile-scan verify_crop call failed for r%dc%d: %s", ty, tx, ve,
+                )
+                continue
+            cost_delta += cost_estimate(ans.usage, model=eff_verify_model)
+            accepted = bool(
+                ans.contains_full_logo
+                and ans.fit in ("tight", "loose")
+                and ans.confidence >= _TILE_SCAN_VERIFY_THRESHOLD
+            )
+            if accepted:
+                provenance = {
+                    "tile_scanned": True,
+                    "tile_attempts": len(candidates),
+                    "tile_origin": [int(ox), int(oy)],
+                    "tile_index": f"r{ty}c{tx}",
+                    "tile_verified_idx": f"r{ty}c{tx}",
+                }
+                if upscale_factor > 1:
+                    provenance["verify_upscale"] = upscale_factor
+                return (
+                    _build_tile_result(res, global_bbox, ox, oy, ty, tx),
+                    provenance,
+                    cost_delta,
+                )
+        finally:
+            with suppress(OSError):
+                crop_path.unlink(missing_ok=True)
+            if upscaled_path is not None:
+                with suppress(OSError):
+                    upscaled_path.unlink(missing_ok=True)
+
+    # All top-N candidates failed verify — return None so the caller marks
+    # the row needs_review rather than producing a tile-scan false positive.
+    return None, {"tile_scanned": True, "tile_attempts": len(candidates)}, cost_delta
 
 
 async def _process_row(
@@ -492,6 +877,11 @@ async def _process_row(
     # Either triggers it. We OR them so the per-row rerun can enable verify
     # for one job without flipping the env var globally.
     use_verify = _verify_enabled() or bool(getattr(job, "verify_loop", 0))
+    # Iter 6.3 — opt-in 3x3 tile-scan fallback. When the primary match path
+    # fails on a large photo (longest side > 1500 px), we re-try by tiling
+    # the photo and matching each tile. Costs 9 extra LLM calls per affected
+    # evidence — always strictly opt-in via the job-level flag.
+    tile_scan_enabled = bool(getattr(job, "tile_scan", 0))
     # Per-job model override (added 2026-05-24). When None the lower layers
     # fall back to settings.model. Verify-loop keeps using settings.review_model
     # by default; pipeline jobs that pin a vision model only override the
@@ -685,6 +1075,14 @@ async def _process_row(
                 meta["verify_final_bbox"] = (
                     list(vr.final_bbox) if vr.final_bbox else None
                 )
+                # Iter 5 — Pass-3 retry-with-feedback bookkeeping. Only surfaced
+                # when non-default so older rows don't grow noise columns.
+                if vr.retried:
+                    meta["retried"] = True
+                    if vr.retry_reason:
+                        meta["retry_reason"] = vr.retry_reason
+                    if vr.retry_bbox is not None:
+                        meta["retry_bbox"] = list(vr.retry_bbox)
                 if vr.verify_usage:
                     # When the ark-overdue fallback fired, the entire verify
                     # call ran against gpt-5.5 too — bill against that model
@@ -699,7 +1097,139 @@ async def _process_row(
                     )
                     meta["verify_usage"] = vr.verify_usage
 
-            # Acceptance gate
+            # ---- Iter 7 Pass-1 variance pre-gate -------------------------
+            # Drop Pass-1 predictions whose bbox lands on a blank/background
+            # region (truth-set analysis: this filters ~50% of wrong-region
+            # hallucinations without losing any real hit — see
+            # `_PASS1_BLANK_STD_THRESHOLD` comment above). The gate fires
+            # whether verify_loop is ON or OFF; when verify already ran inside
+            # match_with_verify, we still invalidate its verdict because the
+            # bbox itself is unusable. The tile-scan fallback below uses
+            # `not result.found` as its trigger, so a gate-rejected Pass-1
+            # still gets a tile-scan recovery attempt — the logo might be in
+            # a real region elsewhere in the photo.
+            if result.found and result.bbox:
+                _stats = await loop.run_in_executor(
+                    None,
+                    _bbox_blank_stats,
+                    ev_path,
+                    result.bbox,
+                )
+                if _stats is not None:
+                    _std, _white = _stats
+                    if (
+                        _std < _PASS1_BLANK_STD_THRESHOLD
+                        or _white > _PASS1_BLANK_WHITE_THRESHOLD
+                    ):
+                        meta["pass1_blank_reject"] = True
+                        meta["pass1_blank_std"] = _std
+                        meta["pass1_blank_white"] = _white
+                        meta["pass1_original_bbox"] = list(result.bbox)
+                        meta["pass1_original_reason"] = result.reason
+                        meta["found"] = False
+                        # Invalidate verify's verdict — its `verified=True`
+                        # output on a blank bbox is the exact failure mode
+                        # this gate exists to suppress. Setting vr=None lets
+                        # the acceptance gate below take the no-verify branch
+                        # which checks `result.found` (now False).
+                        vr = None
+                        result = MatchResult(
+                            found=False,
+                            bbox=None,
+                            confidence=0.0,
+                            reason=(
+                                f"pass-1 bbox is blank region "
+                                f"(std={_std:.1f}, white={_white:.2f})"
+                            ),
+                            raw_response=result.raw_response,
+                            prompt_version=result.prompt_version,
+                            model=result.model,
+                            usage=result.usage,
+                        )
+
+            # ---- Iter 6.3 tile-scan fallback -----------------------------
+            # Trigger conditions (job.tile_scan must be ON):
+            #   - Pass-1 returned found=False                                → tile-scan
+            #   - verify enabled, found=true but verified=False AND retried  → tile-scan
+            #   - verify enabled, found=true, not retried, verified=False    → tile-scan
+            #     (iter-5 retry already covered the blank-reject path; any
+            #      other verify reject on a busy photo is the exact case
+            #      tile-scan is designed to recover)
+            # Skip when Pass-1 errored (we never reach here in that case),
+            # or when the photo is small enough not to need it (the helper
+            # itself early-returns based on _TILE_SCAN_MIN_LONGEST_SIDE).
+            if tile_scan_enabled:
+                # Trigger: Pass-1 found nothing, OR (verify on AND Pass-1 found
+                # but verify rejected). Skip when verify already passed — that
+                # result is already good. Skip when Pass-1 errored (we never
+                # reach here in that case; the early return above bails first).
+                wants_tile_scan = False
+                if not result.found:
+                    wants_tile_scan = True
+                elif use_verify and vr is not None and not vr.verified:
+                    wants_tile_scan = True
+                if wants_tile_scan:
+                    # Iter 6.4 — verify-in-the-loop is now done INSIDE _tile_scan
+                    # over the top-3 candidates, so a degenerate high-conf tile
+                    # can no longer beat a real lower-conf match. When verify
+                    # is enabled, _tile_scan returns ONLY a verify-confirmed
+                    # result (or None when all top-3 fail).
+                    ts_verify_model = job_model or settings.review_model
+                    ts_result, ts_prov, ts_cost = await loop.run_in_executor(
+                        None,
+                        lambda lp=logo_path, ep=ev_path, m=eff_model,
+                               vm=ts_verify_model, ve=use_verify: _tile_scan(
+                            lp, ep, settings=settings, model=m,
+                            verify_enabled=ve, verify_model=vm,
+                        ),
+                    )
+                    local_cost += ts_cost
+
+                    # Always surface tile-scan provenance — even on a miss the
+                    # reviewer should see "we tried tile-scan, N candidates
+                    # survived the degenerate filter".
+                    if ts_prov:
+                        meta.update(ts_prov)
+
+                    if ts_result is not None and ts_result.bbox is not None:
+                        # Overwrite the now-superseded primary fields with the
+                        # tile-scan winner so downstream consumers (best-crop
+                        # ranking, frontend bbox overlay) see the right bbox.
+                        meta["found"] = True
+                        meta["bbox"] = list(ts_result.bbox)
+                        meta["confidence"] = ts_result.confidence
+                        meta["reason"] = ts_result.reason
+                        # Replace `result` so the acceptance gate below uses
+                        # the tile-scan bbox + confidence.
+                        result = ts_result
+                        if use_verify:
+                            # _tile_scan only returns a result when verify
+                            # passed, so we can mark verified=True here.
+                            meta["verified"] = True
+                            # Patch `vr` to keep the acceptance-gate branch
+                            # below in sync with the post-tile-scan state.
+                            if vr is not None:
+                                vr = VerifyResult(
+                                    primary=ts_result,
+                                    verified=True,
+                                    final_bbox=ts_result.bbox,
+                                    fit_label=vr.fit_label,
+                                    verify_confidence=vr.verify_confidence,
+                                    verify_reason=vr.verify_reason,
+                                    iters=vr.iters + 1,
+                                    verify_usage=vr.verify_usage,
+                                    retried=vr.retried,
+                                    retry_reason=vr.retry_reason,
+                                    retry_bbox=vr.retry_bbox,
+                                )
+                    # When ts_result is None, leave `result` / `vr` untouched.
+                    # If Pass-1 was found=False, the row will fall through to
+                    # needs_review naturally; if Pass-1 was found-but-rejected,
+                    # the verify-reject state already drives needs_review.
+
+            # Acceptance gate. When tile-scan fired, `result` and (if verify
+            # enabled) `vr` have already been overwritten with the tile-scan
+            # outcome, so the same gate logic applies uniformly.
             if use_verify and vr is not None:
                 accept = (
                     bool(vr.verified)

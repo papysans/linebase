@@ -128,6 +128,16 @@ def init_schema(db_path: Path = DB_PATH) -> None:
             conn.execute("ALTER TABLE job ADD COLUMN verify_loop INTEGER NOT NULL DEFAULT 0")
         except sqlite3.OperationalError:
             pass
+        # Added 2026-05-24 (iter 6.3): opt-in 3x3 tile-scan fallback for small
+        # logos buried in busy photos. When 1, `_one_evidence` re-tries failed
+        # / unverified matches by cropping the evidence into 9 tiles and
+        # matching each tile, then translating the best tile's bbox back to
+        # the original photo's coords. Costs 9 extra LLM calls per evidence —
+        # always opt-in, never default.
+        try:
+            conn.execute("ALTER TABLE job ADD COLUMN tile_scan INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
 
 _singleton: sqlite3.Connection | None = None
@@ -199,6 +209,7 @@ class Job:
     finished_at: float | None
     model: str | None = None  # added 2026-05-24: per-job LLM override; NULL → use settings.model
     verify_loop: int = 0  # added 2026-05-24: 1 → run the verify-loop on every evidence; 0 → single-shot match
+    tile_scan: int = 0  # added 2026-05-24 (iter 6.3): 1 → fall back to 3x3 tile scan when primary fails on large photos
 
 
 def insert_job(
@@ -212,15 +223,17 @@ def insert_job(
     sample_params: dict[str, Any],
     model: str | None = None,
     verify_loop: int = 0,
+    tile_scan: int = 0,
 ) -> Job:
     jid = new_id()
     now = time.time()
     db().execute(
         """INSERT INTO job(id, upload_id, sheet_name, logo_column, evidence_column, appno_column,
-           threshold, sample_kind, sample_params_json, status, created_at, model, verify_loop)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           threshold, sample_kind, sample_params_json, status, created_at, model, verify_loop, tile_scan)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (jid, upload_id, sheet_name, logo_column, evidence_column, appno_column,
-         threshold, sample_kind, json.dumps(sample_params), "pending", now, model, int(bool(verify_loop))),
+         threshold, sample_kind, json.dumps(sample_params), "pending", now, model,
+         int(bool(verify_loop)), int(bool(tile_scan))),
     )
     return get_job(jid)  # type: ignore[return-value]
 

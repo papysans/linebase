@@ -20,13 +20,40 @@ from __future__ import annotations
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+import numpy as np
 from openai import OpenAI
 from PIL import Image
 
 from linebase.config import Settings
 from linebase.crop import crop_to_bbox
-from linebase.llm import MatchResult, VerifyAnswer, match_logo_in_photo, verify_crop
+from linebase.llm import (
+    MatchResult,
+    VerifyAnswer,
+    match_logo_in_photo,
+    match_logo_with_feedback,
+    verify_crop,
+)
+
+# Substrings (case-insensitive) that mark a verify rejection as "blank-crop"
+# rather than "wrong-logo". When any of these appears in `verify_reason`,
+# match_with_verify fires the Pass-3 retry-with-feedback path. Curated from
+# the ~35 historical rejects in .data/linebase.db (the "blank-crop verify-
+# rejects" cohort that motivated this iter).
+BLANK_VERIFY_PATTERNS: tuple[str, ...] = (
+    "blank",
+    "no visible",
+    "no trace",
+    "background",
+    "no part of",
+)
+
+# Pre-gate thresholds. A crop whose pixel std-dev is below 15.0 AND whose
+# (>240,>240,>240) "near-white" pixel ratio is above 0.7 is considered
+# blank — short-circuit verify, skip the API call, fire the retry directly.
+_PRE_GATE_STD = 15.0
+_PRE_GATE_WHITE_RATIO = 0.7
 
 
 @dataclass
@@ -41,6 +68,16 @@ class VerifyResult:
     verify_usage: dict[str, int] | None = None
     # Diagnostic extras — handy for debugging / eval but not part of the spec.
     skipped_reason: str | None = field(default=None)      # why verify was skipped, if iters==1
+    # Iter 5 retry plumbing. When a blank-crop verify reject (or the variance
+    # pre-gate) fires the Pass-3 retry-with-feedback path, `retried` flips to
+    # True and `retry_reason` captures *what* triggered the retry — useful for
+    # post-mortem diagnostics and the frontend pill.
+    retried: bool = False
+    retry_reason: str | None = field(default=None)
+    # Retry's own bbox (in ORIGINAL coords) when it produced one and it
+    # was actually used as the new primary. None when retry returned
+    # found=false or the IoU gate rejected the retry's bbox.
+    retry_bbox: tuple[int, int, int, int] | None = field(default=None)
 
 
 def _clamp_bbox(
@@ -61,6 +98,95 @@ def _padded_bbox(
     pw = int((x2 - x1) * pad_ratio)
     ph = int((y2 - y1) * pad_ratio)
     return _clamp_bbox((x1 - pw, y1 - ph, x2 + pw, y2 + ph), width, height)
+
+
+def _bbox_iou(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> float:
+    """Standard axis-aligned IoU. Defensive against zero-area boxes (returns 0)."""
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    ix1 = max(ax1, bx1)
+    iy1 = max(ay1, by1)
+    ix2 = min(ax2, bx2)
+    iy2 = min(ay2, by2)
+    iw = max(0, ix2 - ix1)
+    ih = max(0, iy2 - iy1)
+    inter = iw * ih
+    if inter <= 0:
+        return 0.0
+    area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)
+    area_b = max(0, bx2 - bx1) * max(0, by2 - by1)
+    union = area_a + area_b - inter
+    if union <= 0:
+        return 0.0
+    return float(inter) / float(union)
+
+
+def _is_blank_verify_reason(reason: str | None) -> bool:
+    """True when the verify rejection signals "crop was blank, not a wrong logo"."""
+    if not reason:
+        return False
+    low = reason.lower()
+    return any(p in low for p in BLANK_VERIFY_PATTERNS)
+
+
+def _stats_from_rgb_array(arr: "np.ndarray[Any, Any]") -> tuple[float, float] | None:
+    """Core numpy calc shared by `_crop_blank_stats` and `_bbox_blank_stats`.
+
+    Returns `(std_dev, near_white_ratio)` over the array's pixels, or None when
+    the array is empty. `near_white_ratio` counts pixels with all three RGB
+    channels > 240.
+    """
+    if arr.size == 0:
+        return None
+    std = float(arr.std())
+    white_mask = (arr > 240).all(axis=-1)
+    white_ratio = float(white_mask.mean())
+    return std, white_ratio
+
+
+def _crop_blank_stats(crop_path: Path) -> tuple[float, float] | None:
+    """Return (std_dev, near_white_ratio) for the crop, or None on failure.
+
+    `near_white_ratio` is the fraction of pixels where all three RGB channels
+    exceed 240 — a USPTO blank margin is essentially pure white at >250 on all
+    channels, so 240 catches mild compression artifacts too.
+    """
+    try:
+        with Image.open(crop_path) as img:
+            arr = np.asarray(img.convert("RGB"))
+    except Exception:
+        return None
+    return _stats_from_rgb_array(arr)
+
+
+def _bbox_blank_stats(
+    photo_path: Path,
+    bbox: tuple[int, int, int, int] | list[int],
+) -> tuple[float, float] | None:
+    """Return (std_dev, near_white_ratio) for `photo_path[bbox]`, or None on failure.
+
+    Unlike `_crop_blank_stats`, this works directly on the source photo + a
+    bbox in photo coords — no temp file. Used by the iter-7 Pass-1 variance
+    pre-gate in `pipeline_runner` to filter blank-region hallucinations before
+    they reach the tile-scan / crop / verify stages.
+
+    The bbox is clamped to the image bounds; if clamping collapses it to zero
+    area we return None (caller treats that as "can't decide, skip the gate").
+    """
+    try:
+        with Image.open(photo_path) as img:
+            rgb = img.convert("RGB")
+            w, h = rgb.size
+            x1, y1, x2, y2 = (int(v) for v in bbox)
+            x1 = max(0, min(x1, w - 1))
+            y1 = max(0, min(y1, h - 1))
+            x2 = max(x1 + 1, min(x2, w))
+            y2 = max(y1 + 1, min(y2, h))
+            crop = rgb.crop((x1, y1, x2, y2))
+            arr = np.asarray(crop)
+    except Exception:
+        return None
+    return _stats_from_rgb_array(arr)
 
 
 def match_with_verify(
@@ -123,21 +249,127 @@ def match_with_verify(
     with Image.open(photo_path) as img:
         orig_w, orig_h = img.size
 
-    pad_ratio = 0.20
-    crop_bbox = _padded_bbox(primary.bbox, pad_ratio, orig_w, orig_h)
-    cx1, cy1, cx2, cy2 = crop_bbox
+    verify_model = model or settings.review_model
 
-    # Write the padded crop to a tempfile (PNG keeps things lossless).
+    # ------- Round 0: pre-gate + verify ----------------------------------
+    verify, crop_bbox_used, pre_gated, _crop_stats = _verify_round(
+        primary.bbox, photo_path, logo_path, orig_w, orig_h,
+        settings=settings, client=client, verify_model=verify_model,
+    )
+    cx1, cy1, cx2, cy2 = crop_bbox_used
+
+    if pre_gated:
+        verified = False
+        final_bbox: tuple[int, int, int, int] | None = None
+        fit_label_used: str | None = "blank_pre_gate"
+        verify_confidence_used: float | None = 0.0
+        std_v, white_v = _crop_stats or (0.0, 0.0)
+        verify_reason_used: str | None = (
+            f"pre-gate: crop is uniform/blank (std={std_v:.1f}, white={white_v:.2f})"
+        )
+        verify_usage_used: dict[str, int] | None = None
+    else:
+        assert verify is not None
+        ok, fbb = _accept_verify(
+            verify, primary.bbox, crop_bbox_used, orig_w, orig_h, verify_threshold,
+        )
+        verified = ok
+        final_bbox = fbb
+        fit_label_used = verify.fit
+        verify_confidence_used = verify.confidence
+        verify_reason_used = verify.reason
+        verify_usage_used = verify.usage
+
+    # ------- Round 1: Pass-3 retry-with-feedback (blank rejects only) ----
+    retry_used = False
+    retry_bbox_used: tuple[int, int, int, int] | None = None
+    retry_reason: str | None = None
+    if not verified and (pre_gated or _is_blank_verify_reason(verify_reason_used)):
+        retry_used = True
+        retry_reason = "blank_pre_gate" if pre_gated else "blank_verify_reject"
+        try:
+            rr = match_logo_with_feedback(
+                logo_path, photo_path,
+                prior_bbox=primary.bbox, prior_reason=primary.reason,
+                verify_reason=(verify_reason_used or ""),
+                settings=settings, client=client, model=model,
+            )
+        except Exception:
+            rr = None
+        if rr is not None and rr.found and rr.bbox is not None:
+            new_bbox = _clamp_bbox(rr.bbox, orig_w, orig_h)
+            if _bbox_iou(new_bbox, primary.bbox) < 0.5:
+                v2, cbox2, pre2, st2 = _verify_round(
+                    new_bbox, photo_path, logo_path, orig_w, orig_h,
+                    settings=settings, client=client, verify_model=verify_model,
+                )
+                if pre2:
+                    std_v, white_v = st2 or (0.0, 0.0)
+                    verify_reason_used = (
+                        f"retry pre-gate: still blank (std={std_v:.1f}, white={white_v:.2f})"
+                    )
+                    fit_label_used = "blank_pre_gate"
+                    verify_confidence_used = 0.0
+                else:
+                    assert v2 is not None
+                    ok2, fbb2 = _accept_verify(
+                        v2, new_bbox, cbox2, orig_w, orig_h, verify_threshold,
+                    )
+                    if v2.usage:
+                        verify_usage_used = _sum_int_dicts(verify_usage_used, v2.usage)
+                    fit_label_used = v2.fit
+                    verify_confidence_used = v2.confidence
+                    verify_reason_used = v2.reason
+                    if ok2:
+                        verified, final_bbox, retry_bbox_used = True, fbb2, new_bbox
+                    else:
+                        verified, final_bbox = False, None
+
+    return VerifyResult(
+        primary=primary,
+        verified=verified,
+        final_bbox=final_bbox,
+        fit_label=fit_label_used,
+        verify_confidence=verify_confidence_used,
+        verify_reason=verify_reason_used,
+        iters=2,
+        verify_usage=verify_usage_used,
+        retried=retry_used,
+        retry_reason=retry_reason,
+        retry_bbox=retry_bbox_used,
+    )
+
+
+def _verify_round(
+    candidate_bbox: tuple[int, int, int, int],
+    photo_path: Path,
+    logo_path: Path,
+    orig_w: int,
+    orig_h: int,
+    *,
+    settings: Settings,
+    client: OpenAI | None,
+    verify_model: str,
+) -> tuple[
+    VerifyAnswer | None,
+    tuple[int, int, int, int],
+    bool,
+    tuple[float, float] | None,
+]:
+    """Crop the candidate bbox (+20% pad), pre-gate, optionally call verify_crop.
+
+    Returns (verify_answer_or_None, padded_crop_bbox, pre_gated, blank_stats).
+    pre_gated=True short-circuits without an API call.
+    """
+    cbox = _padded_bbox(candidate_bbox, 0.20, orig_w, orig_h)
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp_path = Path(tmp.name)
     try:
-        crop_to_bbox(photo_path, crop_bbox, tmp_path, pad_ratio=0.0)
-        # When the caller pinned a `model`, route the verify call to the SAME
-        # model so per-job overrides apply to both passes (previously verify
-        # silently used settings.review_model regardless). With no override,
-        # keep the legacy behavior of using settings.review_model.
-        verify_model = model or settings.review_model
-        verify = verify_crop(
+        crop_to_bbox(photo_path, cbox, tmp_path, pad_ratio=0.0)
+        stats = _crop_blank_stats(tmp_path)
+        if stats is not None and stats[0] < _PRE_GATE_STD and stats[1] > _PRE_GATE_WHITE_RATIO:
+            return None, cbox, True, stats
+        answer = verify_crop(
             logo_path, tmp_path, settings=settings, client=client, model=verify_model
         )
     finally:
@@ -145,54 +377,51 @@ def match_with_verify(
             tmp_path.unlink(missing_ok=True)
         except OSError:
             pass
+    return answer, cbox, False, stats
 
-    fit = verify.fit
-    final_bbox: tuple[int, int, int, int] | None = primary.bbox
 
-    # --- Acceptance rules ---------------------------------------------------
+def _accept_verify(
+    ans: VerifyAnswer,
+    ref_bbox: tuple[int, int, int, int],
+    cbox: tuple[int, int, int, int],
+    orig_w: int,
+    orig_h: int,
+    verify_threshold: float,
+) -> tuple[bool, tuple[int, int, int, int] | None]:
+    """Apply legacy accept rules (tight/loose accept, too_tight expand, else reject)."""
+    cx1, cy1, cx2, cy2 = cbox
     if (
-        verify.contains_full_logo
-        and fit in ("tight", "loose")
-        and verify.confidence >= verify_threshold
+        ans.contains_full_logo
+        and ans.fit in ("tight", "loose")
+        and ans.confidence >= verify_threshold
     ):
-        verified = True
-        # Optionally tighten the bbox when verify reports a `loose` fit AND a
-        # suggested_bbox in CROP coords — translate back to ORIGINAL coords.
-        if fit == "loose" and verify.suggested_bbox is not None:
-            sx1, sy1, sx2, sy2 = verify.suggested_bbox
-            cand = (cx1 + sx1, cy1 + sy1, cx1 + sx2, cy1 + sy2)
-            cand = _clamp_bbox(cand, orig_w, orig_h)
-            # Only accept the shrink if it lies inside the original (un-padded) bbox
-            # area-wise (we never want verify to grow the box on "loose"; growth is
-            # only allowed via the `too_tight` branch).
-            ox1, oy1, ox2, oy2 = primary.bbox
+        if ans.fit == "loose" and ans.suggested_bbox is not None:
+            sx1, sy1, sx2, sy2 = ans.suggested_bbox
+            cand = _clamp_bbox((cx1 + sx1, cy1 + sy1, cx1 + sx2, cy1 + sy2), orig_w, orig_h)
             if cand[0] >= cx1 and cand[1] >= cy1 and cand[2] <= cx2 and cand[3] <= cy2:
-                final_bbox = cand
-            else:
-                final_bbox = primary.bbox
-        else:
-            final_bbox = primary.bbox
-
-    elif fit == "too_tight":
-        # Expand by 20% per side (clamped). Don't re-call the LLM.
-        final_bbox = _padded_bbox(primary.bbox, 0.20, orig_w, orig_h)
-        verified = True
-
-    else:
-        # Reject — either contains_full_logo=False, fit==wrong, or confidence too low.
-        verified = False
-        final_bbox = None
-
-    return VerifyResult(
-        primary=primary,
-        verified=verified,
-        final_bbox=final_bbox,
-        fit_label=fit,
-        verify_confidence=verify.confidence,
-        verify_reason=verify.reason,
-        iters=2,
-        verify_usage=verify.usage,
-    )
+                return True, cand
+        return True, ref_bbox
+    if ans.fit == "too_tight":
+        return True, _padded_bbox(ref_bbox, 0.20, orig_w, orig_h)
+    return False, None
 
 
-__all__ = ["VerifyResult", "VerifyAnswer", "match_with_verify"]
+def _sum_int_dicts(
+    a: dict[str, int] | None, b: dict[str, int] | None
+) -> dict[str, int] | None:
+    """Element-wise add two usage dicts. Tolerates None on either side."""
+    if not a:
+        return dict(b) if b else None
+    if not b:
+        return dict(a)
+    return {k: int(a.get(k, 0) or 0) + int(b.get(k, 0) or 0) for k in set(a) | set(b)}
+
+
+__all__ = [
+    "VerifyResult",
+    "VerifyAnswer",
+    "match_with_verify",
+    "BLANK_VERIFY_PATTERNS",
+    "_bbox_blank_stats",
+    "_crop_blank_stats",
+]

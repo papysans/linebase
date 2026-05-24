@@ -51,3 +51,7 @@ Thumbs.db
 *.tmp
 *.stackdump
 *.bak
+
+# ---- Truth-set derived snapshots ------------------------------------------
+docs/baseline_report_*/
+docs/successful_crops.zip

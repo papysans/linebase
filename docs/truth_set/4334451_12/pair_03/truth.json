@@ -1,0 +1,19 @@
+{
+  "tm": "4334451",
+  "category": "12",
+  "pair_index": 3,
+  "evidence": "evidence.png",
+  "expected": "expected.png",
+  "truth_bbox": [
+    495,
+    244,
+    945,
+    568
+  ],
+  "template_match_score": 0.9999998142610318,
+  "best_scale": 1.0,
+  "evidence_size": [
+    1705,
+    960
+  ]
+}
