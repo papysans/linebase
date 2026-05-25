@@ -32,9 +32,20 @@ from linebase.llm import (
     MatchResult,
     VerifyAnswer,
     match_logo_in_photo,
+    match_logo_in_zoomed,
     match_logo_with_feedback,
     verify_crop,
 )
+
+
+def _refine_env_enabled() -> bool:
+    """Default-on; `LINEBASE_REFINE=0/false/off/no` disables. Case-insensitive."""
+    import os
+
+    raw = os.environ.get("LINEBASE_REFINE", "").strip().lower()
+    if raw in {"0", "false", "off", "no"}:
+        return False
+    return True
 
 # Substrings (case-insensitive) that mark a verify rejection as "blank-crop"
 # rather than "wrong-logo". When any of these appears in `verify_reason`,
@@ -78,6 +89,15 @@ class VerifyResult:
     # was actually used as the new primary. None when retry returned
     # found=false or the IoU gate rejected the retry's bbox.
     retry_bbox: tuple[int, int, int, int] | None = field(default=None)
+    # Iter 9 — refine pass. Flips to True when the refine branch fired and
+    # its bbox SURVIVED a second verify (i.e. final_bbox was sourced from
+    # `match_logo_in_zoomed`, not Pass-1 or the verify-suggested shrink).
+    refined: bool = False
+    # Refine's bbox in ORIGINAL photo coords. Only set when `refined=True`.
+    refine_bbox: tuple[int, int, int, int] | None = field(default=None)
+    # Origin (top-left x, y) of the zoom crop in ORIGINAL coords. Surfaced for
+    # provenance + frontend visualisation; None when refine never ran.
+    refine_origin: tuple[int, int] | None = field(default=None)
 
 
 def _clamp_bbox(
@@ -197,6 +217,7 @@ def match_with_verify(
     max_iters: int = 2,
     verify_threshold: float = 0.6,
     model: str | None = None,
+    refine: bool | None = None,
 ) -> VerifyResult:
     """Pass-1 match + at most one verify call. See module docstring for the rules.
 
@@ -210,8 +231,16 @@ def match_with_verify(
     call use this model id (so per-job/per-row overrides actually reach both
     passes). When None, Pass-1 falls back to `settings.model` and verify falls
     back to `settings.review_model`, matching the legacy behavior.
+
+    `refine`: iter-9 refine pass. When None we read the `LINEBASE_REFINE` env
+    var (default ON). When True/False, override the env. Refine fires only
+    when the verify call accepts a `fit=loose` bbox — it re-asks the SAME
+    primary model on a +30%-padded zoom-crop, then re-verifies the refined
+    bbox; if both succeed, the final_bbox shifts to the refined one. Costs
+    +1 primary call + +1 verify call when it fires.
     """
     settings = settings or Settings.from_env()
+    refine_enabled = _refine_env_enabled() if refine is None else bool(refine)
 
     primary = match_logo_in_photo(
         logo_path, photo_path, settings=settings, client=client, model=model
@@ -258,6 +287,11 @@ def match_with_verify(
     )
     cx1, cy1, cx2, cy2 = crop_bbox_used
 
+    # Refine bookkeeping (populated inside the refine branch below).
+    refined_used = False
+    refine_bbox_used: tuple[int, int, int, int] | None = None
+    refine_origin_used: tuple[int, int] | None = None
+
     if pre_gated:
         verified = False
         final_bbox: tuple[int, int, int, int] | None = None
@@ -279,6 +313,30 @@ def match_with_verify(
         verify_confidence_used = verify.confidence
         verify_reason_used = verify.reason
         verify_usage_used = verify.usage
+
+        # ---- Iter 9 refine: tighten loose bboxes via a zoomed re-ask -----
+        if (
+            ok
+            and refine_enabled
+            and verify.fit == "loose"
+            and primary.bbox is not None
+        ):
+            ref_outcome = _refine_round(
+                logo_path, photo_path, primary.bbox,
+                orig_w=orig_w, orig_h=orig_h,
+                settings=settings, client=client, model=model,
+                verify_model=verify_model, verify_threshold=verify_threshold,
+            )
+            if ref_outcome is not None:
+                refined_bbox, refine_origin, refine_usage_total = ref_outcome
+                refined_used = True
+                refine_bbox_used = refined_bbox
+                refine_origin_used = refine_origin
+                final_bbox = refined_bbox
+                if refine_usage_total:
+                    verify_usage_used = _sum_int_dicts(
+                        verify_usage_used, refine_usage_total
+                    )
 
     # ------- Round 1: Pass-3 retry-with-feedback (blank rejects only) ----
     retry_used = False
@@ -322,6 +380,26 @@ def match_with_verify(
                     verify_reason_used = v2.reason
                     if ok2:
                         verified, final_bbox, retry_bbox_used = True, fbb2, new_bbox
+                        # Refine can chain with retry: when the retry's verify
+                        # says fit=loose, try tightening the retry's bbox.
+                        if refine_enabled and v2.fit == "loose":
+                            ref_outcome = _refine_round(
+                                logo_path, photo_path, new_bbox,
+                                orig_w=orig_w, orig_h=orig_h,
+                                settings=settings, client=client, model=model,
+                                verify_model=verify_model,
+                                verify_threshold=verify_threshold,
+                            )
+                            if ref_outcome is not None:
+                                rb, ro, ru = ref_outcome
+                                refined_used = True
+                                refine_bbox_used = rb
+                                refine_origin_used = ro
+                                final_bbox = rb
+                                if ru:
+                                    verify_usage_used = _sum_int_dicts(
+                                        verify_usage_used, ru
+                                    )
                     else:
                         verified, final_bbox = False, None
 
@@ -337,7 +415,79 @@ def match_with_verify(
         retried=retry_used,
         retry_reason=retry_reason,
         retry_bbox=retry_bbox_used,
+        refined=refined_used,
+        refine_bbox=refine_bbox_used,
+        refine_origin=refine_origin_used,
     )
+
+
+def _refine_round(
+    logo_path: Path,
+    photo_path: Path,
+    region_bbox: tuple[int, int, int, int],
+    *,
+    orig_w: int,
+    orig_h: int,
+    settings: Settings,
+    client: OpenAI | None,
+    model: str | None,
+    verify_model: str,
+    verify_threshold: float,
+) -> tuple[
+    tuple[int, int, int, int],
+    tuple[int, int],
+    dict[str, int] | None,
+] | None:
+    """Crop the photo around `region_bbox` (with +30% pad), re-ask the SAME
+    primary model for a tight bbox, then verify that refined bbox.
+
+    Returns `(refined_bbox_in_orig_coords, zoom_origin, summed_usage)` when
+    refine succeeds AND the re-verify accepts it. Returns None on any of:
+      - refine call raises
+      - refine returns `found=False` or no bbox
+      - refined bbox area is zero / degenerate
+      - re-verify pre-gate trips or verify says `wrong` / low confidence
+
+    """
+    try:
+        refine_res, zoom_origin = match_logo_in_zoomed(
+            logo_path, photo_path,
+            region_bbox=region_bbox,
+            settings=settings,
+            client=client,
+            model=model,
+        )
+    except Exception:
+        return None
+    if not refine_res.found or refine_res.bbox is None:
+        return None
+    rx1, ry1, rx2, ry2 = refine_res.bbox
+    zx0, zy0 = zoom_origin
+    cand = (zx0 + rx1, zy0 + ry1, zx0 + rx2, zy0 + ry2)
+    cand = _clamp_bbox(cand, orig_w, orig_h)
+    if cand[2] <= cand[0] or cand[3] <= cand[1]:
+        return None
+
+    # Re-verify the refined bbox; if pre-gate trips or verify says wrong,
+    # fall back to the pre-refine bbox (handled by caller via None return).
+    v2, _cbox2, pre2, _st2 = _verify_round(
+        cand, photo_path, logo_path, orig_w, orig_h,
+        settings=settings, client=client, verify_model=verify_model,
+    )
+    usage_total: dict[str, int] | None = refine_res.usage
+    if pre2:
+        return None
+    assert v2 is not None
+    if v2.usage:
+        usage_total = _sum_int_dicts(usage_total, v2.usage)
+    ok2, fbb2 = _accept_verify(
+        v2, cand, _cbox2, orig_w, orig_h, verify_threshold,
+    )
+    if not ok2 or fbb2 is None:
+        return None
+    # _accept_verify may have applied a tighter shrink via suggested_bbox or
+    # an expansion for `too_tight`; surface that as the refined final.
+    return fbb2, zoom_origin, usage_total
 
 
 def _verify_round(
@@ -424,4 +574,5 @@ __all__ = [
     "BLANK_VERIFY_PATTERNS",
     "_bbox_blank_stats",
     "_crop_blank_stats",
+    "_refine_env_enabled",
 ]

@@ -32,6 +32,7 @@ from linebase.crop import crop_to_bbox
 from linebase.fetch import fetch
 from linebase.io_excel import iter_rows
 from linebase.llm import MatchResult, match_logo_in_photo, verify_crop
+from linebase.sift_refine import sift_refine_bbox
 from linebase.verify_loop import VerifyResult, _bbox_blank_stats, match_with_verify
 
 _log = logging.getLogger(__name__)
@@ -40,6 +41,53 @@ _log = logging.getLogger(__name__)
 def _verify_enabled() -> bool:
     """Opt-in via env: LINEBASE_VERIFY=1 (also accepts true/yes/on, case-insensitive)."""
     return os.environ.get("LINEBASE_VERIFY", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    """Env-flag reader with explicit default. Accepts 1/true/yes/on (case-insensitive)
+    for true and 0/false/no/off for false; empty / unset returns `default`.
+
+    Used by the SIFT refine + recall toggles below, both default ON.
+    """
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+def _sift_refine_enabled() -> bool:
+    """Iter 10 — SIFT refine after Pass-1. DEFAULT OFF as of iter-10 review:
+    line-art USPTO logos vs colored printed logos in real-world photos share
+    almost no SIFT keypoints, so refine fires <5% of the time AND when it
+    does, the homography between mis-matched feature spaces produces wild
+    bboxes (truth-set IoU regressed 0.45→0.23 on 4334451_pair_03). Enable
+    via LINEBASE_SIFT_REFINE=1 when you have textured (filled) logos rather
+    than line-art outlines — the iter-10 commit message has the full
+    explanation. The next iter should pursue edge-based shape matching
+    (Canny + matchShapes / Hu moments) per USPTO patent 9536171, which is
+    the correct technique for line-art ↔ printed-logo matching.
+    """
+    return _env_flag("LINEBASE_SIFT_REFINE", default=False)
+
+
+def _sift_recall_enabled() -> bool:
+    """Iter 10 — SIFT whole-photo recall lifter for Pass-1 found=False rows.
+    DEFAULT OFF — same line-art/SIFT mismatch as the refine path; enabling
+    didn't recover any of the 8 NONE cases on the truth set. Toggle via
+    LINEBASE_SIFT_RECALL=1.
+    """
+    return _env_flag("LINEBASE_SIFT_RECALL", default=False)
+
+
+# Iter 10 — stricter inlier floor for the whole-photo recall path. The
+# refine path already has the VLM's region narrowing things down; recall
+# searches the whole photo and so demands more geometric agreement before
+# overruling the VLM's "not found" verdict.
+_SIFT_RECALL_MIN_INLIERS = 10
 
 
 def _env_int(name: str, default: int, *, min_value: int = 1) -> int:
@@ -229,6 +277,13 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                     ev_bbox = [float(x) for x in raw_bbox]
                 except (TypeError, ValueError):
                     ev_bbox = None
+            # Iter 9 bug fix: legacy rows from before the source-side null-out
+            # may still carry the original (rejected) bbox alongside the
+            # `pass1_blank_reject` flag. Force bbox=None during projection so
+            # the API surface and the frontend overlay don't show a phantom
+            # box on a rejected blank region.
+            if m.get("pass1_blank_reject"):
+                ev_bbox = None
             # Iter 5 retry surface: only emit `retried` / `retry_bbox` when the
             # backing pipeline actually fired the Pass-3 retry, so older rows
             # don't acquire stray null keys in their API shape.
@@ -260,6 +315,45 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                     entry["retry_reason"] = m.get("retry_reason")
                 if retry_bbox_proj is not None:
                     entry["retry_bbox"] = retry_bbox_proj
+            # Iter 9 — refine pass provenance. Only emit keys when refine
+            # actually fired so older rows stay null-key-clean.
+            if m.get("refined"):
+                entry["refined"] = True
+                raw_refine_bbox = m.get("refine_bbox")
+                if isinstance(raw_refine_bbox, (list, tuple)) and len(raw_refine_bbox) == 4:
+                    with suppress(TypeError, ValueError):
+                        entry["refine_bbox"] = [float(x) for x in raw_refine_bbox]
+                raw_refine_origin = m.get("refine_origin")
+                if isinstance(raw_refine_origin, (list, tuple)) and len(raw_refine_origin) == 2:
+                    with suppress(TypeError, ValueError):
+                        entry["refine_origin"] = [int(raw_refine_origin[0]), int(raw_refine_origin[1])]
+            # Iter 10 — SIFT refine / recall provenance. Two independent
+            # paths emit through this branch:
+            #   - refine: VLM gave a bbox, SIFT tightened it → `sift_refined`
+            #   - recall: VLM said found=false, SIFT recovered → `sift_recall_hit`
+            # Both surface inlier count for the modal's debug strip. Original
+            # bbox is recorded only for the refine path (recall has no
+            # original to compare against).
+            if m.get("sift_refined"):
+                entry["sift_refined"] = True
+                si_raw = m.get("sift_inliers")
+                if si_raw is not None:
+                    with suppress(TypeError, ValueError):
+                        entry["sift_inliers"] = int(si_raw)
+                raw_orig_sift = m.get("sift_original_bbox")
+                if isinstance(raw_orig_sift, (list, tuple)) and len(raw_orig_sift) == 4:
+                    with suppress(TypeError, ValueError):
+                        entry["sift_original_bbox"] = [float(x) for x in raw_orig_sift]
+            if m.get("sift_recall_hit"):
+                entry["sift_recall_hit"] = True
+                # Recall path may share `sift_inliers` with refine — only
+                # emit when refine didn't already set it (avoid duplicate
+                # int-cast on the same value).
+                if "sift_inliers" not in entry:
+                    si_raw = m.get("sift_inliers")
+                    if si_raw is not None:
+                        with suppress(TypeError, ValueError):
+                            entry["sift_inliers"] = int(si_raw)
             # Iter 7 — Pass-1 variance pre-gate provenance. Only emit when
             # the gate actually tripped so older rows don't grow null noise.
             if m.get("pass1_blank_reject"):
@@ -1083,6 +1177,15 @@ async def _process_row(
                         meta["retry_reason"] = vr.retry_reason
                     if vr.retry_bbox is not None:
                         meta["retry_bbox"] = list(vr.retry_bbox)
+                # Iter 9 — refine pass bookkeeping. Only emitted when refine
+                # actually fired AND its bbox SURVIVED the re-verify, so older
+                # rows don't grow noise keys.
+                if vr.refined:
+                    meta["refined"] = True
+                    if vr.refine_bbox is not None:
+                        meta["refine_bbox"] = list(vr.refine_bbox)
+                    if vr.refine_origin is not None:
+                        meta["refine_origin"] = list(vr.refine_origin)
                 if vr.verify_usage:
                     # When the ark-overdue fallback fired, the entire verify
                     # call ran against gpt-5.5 too — bill against that model
@@ -1127,6 +1230,12 @@ async def _process_row(
                         meta["pass1_original_bbox"] = list(result.bbox)
                         meta["pass1_original_reason"] = result.reason
                         meta["found"] = False
+                        # Iter 9 bug fix: when the variance gate fires the
+                        # bbox itself is unusable — null it out so downstream
+                        # consumers (frontend overlay, eval) don't render the
+                        # blank-region rectangle. The provenance lives on
+                        # `pass1_original_bbox` only.
+                        meta["bbox"] = None
                         # Invalidate verify's verdict — its `verified=True`
                         # output on a blank bbox is the exact failure mode
                         # this gate exists to suppress. Setting vr=None lets
@@ -1146,6 +1255,148 @@ async def _process_row(
                             model=result.model,
                             usage=result.usage,
                         )
+
+            # ---- Iter 10 SIFT + RANSAC homography refine -----------------
+            # Two paths, both pure CV (zero LLM cost):
+            #
+            #   (a) refine — when Pass-1 (or post-tile-scan, see below) gave
+            #       a bbox B0, SIFT/FLANN/RANSAC inside the 3x-expanded B0
+            #       to find pixel-tight corners. On success we replace
+            #       `result.bbox` (and `vr.final_bbox` when verify ran) and
+            #       record the original as provenance. On failure we keep B0
+            #       unchanged — SIFT failing inside a verified VLM region is
+            #       common (engraved / low-texture logos) and not a reason to
+            #       reject the row.
+            #
+            #   (b) recall — when Pass-1 returned found=False, SIFT the WHOLE
+            #       photo (no region hint). A high-inlier match (>= 10) means
+            #       the VLM missed something the geometry-based matcher can
+            #       still recover; treat it as a fresh bbox and proceed
+            #       through verify / acceptance like any Pass-1 hit.
+            #
+            # Why here (between variance gate and tile-scan):
+            #   - Variance gate may have zero'd out a hallucinated bbox; we
+            #     must respect that and treat the row as "not found" for
+            #     refine purposes. The recall path THEN gets the chance to
+            #     find the real logo if it exists.
+            #   - Tile-scan is opt-in + LLM-cost-heavy; SIFT recall is free
+            #     and frequently catches the same cases without 9 extra
+            #     calls, so running it first is the right cost order.
+            sift_refine_on = _sift_refine_enabled()
+            sift_recall_on = _sift_recall_enabled()
+
+            # Refine path: only when Pass-1 produced a bbox AND the variance
+            # gate didn't null it. `result.bbox` is the authoritative source
+            # post-variance-gate (the gate nulls it to None on rejection).
+            if sift_refine_on and result.found and result.bbox is not None:
+                try:
+                    sift_res = await loop.run_in_executor(
+                        None,
+                        lambda lp=logo_path, ep=ev_path, rb=result.bbox: sift_refine_bbox(
+                            lp, ep, region_bbox=rb,
+                        ),
+                    )
+                except Exception as e:
+                    # SIFT itself shouldn't throw on valid inputs, but if cv2
+                    # ever surprises us we don't want the whole evidence to
+                    # tank — fall back to the unrefined bbox + a log line.
+                    _log.warning("sift_refine_bbox raised %r — keeping VLM bbox", e)
+                    sift_res = None
+
+                if sift_res is not None:
+                    # Record provenance BEFORE overwriting so the modal can
+                    # render both the original VLM bbox and the refined one.
+                    meta["sift_refined"] = True
+                    meta["sift_inliers"] = sift_res.inliers
+                    meta["sift_original_bbox"] = list(result.bbox)
+                    # Mutate `result` via a fresh MatchResult — dataclass
+                    # fields are not frozen, but a fresh instance keeps the
+                    # rest of `_one_evidence` reading from a consistent
+                    # snapshot (and matches how the variance gate also
+                    # rewrites the result).
+                    result = MatchResult(
+                        found=result.found,
+                        bbox=sift_res.bbox,
+                        confidence=result.confidence,
+                        reason=result.reason,
+                        raw_response=result.raw_response,
+                        prompt_version=result.prompt_version,
+                        model=result.model,
+                        usage=result.usage,
+                        clarity=result.clarity,
+                        completeness=result.completeness,
+                        isolation=result.isolation,
+                        json_retry_count=result.json_retry_count,
+                    )
+                    meta["bbox"] = list(sift_res.bbox)
+                    # When verify already ran, its semantic verdict still
+                    # applies (it confirmed the logo IS in that region); we
+                    # just tighten the pixels. Update final_bbox so the
+                    # downstream crop uses the refined coordinates.
+                    if vr is not None and vr.verified:
+                        vr = VerifyResult(
+                            primary=result,
+                            verified=vr.verified,
+                            final_bbox=sift_res.bbox,
+                            fit_label=vr.fit_label,
+                            verify_confidence=vr.verify_confidence,
+                            verify_reason=vr.verify_reason,
+                            iters=vr.iters,
+                            verify_usage=vr.verify_usage,
+                            retried=vr.retried,
+                            retry_reason=vr.retry_reason,
+                            retry_bbox=vr.retry_bbox,
+                        )
+
+            # Recall path: SIFT the whole photo when Pass-1 came back empty
+            # (or the variance gate nulled it). Stricter inlier floor than
+            # refine because the search space is much larger — false positives
+            # are cheaper to allow on a verified region than on a blind sweep.
+            if sift_recall_on and not result.found:
+                try:
+                    recall_res = await loop.run_in_executor(
+                        None,
+                        lambda lp=logo_path, ep=ev_path: sift_refine_bbox(
+                            lp, ep, region_bbox=None,
+                        ),
+                    )
+                except Exception as e:
+                    _log.warning("sift_refine_bbox(recall) raised %r — skipping", e)
+                    recall_res = None
+
+                if (
+                    recall_res is not None
+                    and recall_res.inliers >= _SIFT_RECALL_MIN_INLIERS
+                ):
+                    meta["sift_recall_hit"] = True
+                    meta["sift_inliers"] = recall_res.inliers
+                    # Synthesize a found=True MatchResult so the rest of the
+                    # evidence path treats it like a successful Pass-1.
+                    # Confidence is set to a neutral 0.6 — high enough to
+                    # clear the typical 0.5 acceptance threshold but not so
+                    # high that it dominates real VLM hits during best-crop
+                    # ranking. Reason carries the SIFT provenance.
+                    result = MatchResult(
+                        found=True,
+                        bbox=recall_res.bbox,
+                        confidence=0.6,
+                        reason=(
+                            f"sift_recall: {recall_res.inliers} inliers / "
+                            f"{recall_res.total_matches} good matches"
+                        ),
+                        raw_response=result.raw_response,
+                        prompt_version=result.prompt_version,
+                        model=result.model,
+                        usage=result.usage,
+                        clarity=result.clarity,
+                        completeness=result.completeness,
+                        isolation=result.isolation,
+                        json_retry_count=result.json_retry_count,
+                    )
+                    meta["found"] = True
+                    meta["bbox"] = list(recall_res.bbox)
+                    meta["confidence"] = 0.6
+                    meta["reason"] = result.reason
 
             # ---- Iter 6.3 tile-scan fallback -----------------------------
             # Trigger conditions (job.tile_scan must be ON):

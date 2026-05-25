@@ -388,6 +388,121 @@ def match_logo_in_photo(
     )
 
 
+def match_logo_in_zoomed(
+    logo_path: Path,
+    photo_path: Path,
+    *,
+    region_bbox: tuple[int, int, int, int],
+    pad_ratio: float = 0.30,
+    settings: Settings | None = None,
+    client: OpenAI | None = None,
+    model: str | None = None,
+    provider: ProviderConfig | None = None,
+    timeout: float | None = None,
+) -> tuple[MatchResult, tuple[int, int]]:
+    """Refine pass — crop the photo to a zoomed region around `region_bbox`
+    (with `pad_ratio` padding per side), optionally upscale 2x for tiny crops,
+    then call the VLM with `prompts/v_4_refine.md`.
+
+    Returns `(MatchResult, (zoom_origin_x, zoom_origin_y))` where `zoom_origin`
+    is the top-left of the zoom crop in the ORIGINAL photo's pixel coords. The
+    returned `MatchResult.bbox` is in ZOOM-CROP coords — the caller must
+    translate by `(zoom_origin_x, zoom_origin_y)` to recover original-image
+    coords.
+
+    Notes:
+      - When the zoom crop's longest side is < 400 px we upscale 2x with LANCZOS
+        before sending; VLMs are much more reliable on bigger crops.
+      - We always read the v_4_refine.md prompt directly (not via _active_prompt)
+        so this stays decoupled from `LINEBASE_PROMPT_VERSION` overrides — the
+        refine prompt is the only valid one for this call shape.
+    """
+    target = PROMPTS_DIR / "v_4_refine.md"
+    if not target.exists():
+        raise FileNotFoundError(f"Required refine prompt missing: {target}")
+    prompt_text = target.read_text(encoding="utf-8")
+    if prompt_text.startswith("---"):  # strip YAML front-matter
+        end = prompt_text.find("\n---", 3)
+        if end != -1:
+            prompt_text = prompt_text[end + 4 :].lstrip("\n")
+
+    with Image.open(photo_path) as img:
+        photo_w, photo_h = img.size
+    rx1, ry1, rx2, ry2 = region_bbox
+    rw = max(1, rx2 - rx1)
+    rh = max(1, ry2 - ry1)
+    pad_x = int(rw * pad_ratio)
+    pad_y = int(rh * pad_ratio)
+    zx1 = max(0, rx1 - pad_x)
+    zy1 = max(0, ry1 - pad_y)
+    zx2 = min(photo_w, rx2 + pad_x)
+    zy2 = min(photo_h, ry2 + pad_y)
+    if zx2 <= zx1:
+        zx2 = min(photo_w, zx1 + 1)
+    if zy2 <= zy1:
+        zy2 = min(photo_h, zy1 + 1)
+
+    # Crop + optionally upscale 2x when the longest side is < 400 px.
+    fd, tmp_name = tempfile.mkstemp(suffix=photo_path.suffix or ".png")
+    os.close(fd)
+    zoom_path = Path(tmp_name)
+    try:
+        with Image.open(photo_path) as src:
+            crop_img = src.convert("RGB").crop((zx1, zy1, zx2, zy2))
+        cw, ch = crop_img.size
+        if max(cw, ch) < 400:
+            crop_img = crop_img.resize((cw * 2, ch * 2), Image.LANCZOS)
+        save_fmt = "JPEG" if zoom_path.suffix.lower() in {".jpg", ".jpeg"} else "PNG"
+        if save_fmt == "JPEG":
+            crop_img.save(zoom_path, format=save_fmt, quality=92)
+        else:
+            crop_img.save(zoom_path, format=save_fmt)
+
+        result = _run_match_call(
+            logo_path=logo_path,
+            photo_path=zoom_path,
+            prompt_text=prompt_text,
+            prompt_version="4_refine",
+            settings=settings,
+            client=client,
+            model=model,
+            provider=provider,
+            timeout=timeout,
+        )
+    finally:
+        with contextlib.suppress(OSError):
+            zoom_path.unlink(missing_ok=True)
+
+    # `_run_match_call` reads the photo dimensions of the zoom-crop (which may
+    # have been upscaled 2x) and scales bbox into THOSE coords. If we upscaled,
+    # the returned bbox is in upscaled-crop coords — we need to bring it back
+    # to the un-upscaled crop coords (= zoom_origin frame) so the caller's
+    # translate to global coords lines up.
+    if result.bbox is not None:
+        # Re-read what _run_match_call actually saw. When we upscaled the crop
+        # to (cw*2, ch*2), _run_match_call clamped bbox to that size. We undo
+        # the upscale here by checking the saved file's dims vs the un-upscaled
+        # crop dims.
+        bx1, by1, bx2, by2 = result.bbox
+        crop_w = zx2 - zx1
+        crop_h = zy2 - zy1
+        # The file may have been 2x-upscaled; detect by comparing to result's
+        # clamping behaviour. Simplest: if either bbox coord exceeds the
+        # un-upscaled crop dims, we upscaled — divide by 2.
+        if bx2 > crop_w or by2 > crop_h:
+            bx1 //= 2
+            by1 //= 2
+            bx2 = max(bx1 + 1, bx2 // 2)
+            by2 = max(by1 + 1, by2 // 2)
+        bx1 = max(0, min(bx1, crop_w - 1))
+        by1 = max(0, min(by1, crop_h - 1))
+        bx2 = max(bx1 + 1, min(bx2, crop_w))
+        by2 = max(by1 + 1, min(by2, crop_h))
+        result.bbox = (bx1, by1, bx2, by2)
+
+    return result, (zx1, zy1)
+
+
 def match_logo_with_feedback(
     logo_path: Path,
     photo_path: Path,
