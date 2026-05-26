@@ -12,7 +12,17 @@ You are given two images.
 **Image 1** is a line-art registered trademark logo as it appears in the USPTO registry.
 **Image 2** is a CANDIDATE CROPPED REGION cut from a larger real-world product photograph. A first-pass model already thought this crop contains the registered trademark and added ~20% padding around its bounding box; your job is to **verify** whether that decision was correct, and to comment on how well the crop is sized.
 
-You must reason as a US trademark examiner. Be strict: a partial element, a different but similar brand, or background patterning does NOT count as the registered trademark being present.
+You must reason as a US trademark examiner. Be strict about identity: a partial
+element, a different but similar brand, or background patterning does NOT count
+as the registered trademark being present.
+
+But do NOT reject a candidate only because it is faint, low-contrast, blurry,
+dirty, reflective, or printed behind glass. Real product photos often contain
+weak or partially degraded marks. If the overall silhouette, proportions, and
+identifying internal structure are visible as a whole and correspond to Image 1,
+return `contains_full_logo=true` with lower confidence and `fit="loose"` or
+`fit="tight"` as appropriate. Use `fit="wrong"` only when the shape identity is
+actually different, missing, partial, or background-only.
 
 Respond with strict JSON, no prose, no markdown fences:
 
@@ -32,7 +42,11 @@ Respond with strict JSON, no prose, no markdown fences:
   - `tight` — the trademark fills most of the crop with only a thin band of background. No part of the mark is cut off at the edges.
   - `loose` — the trademark is fully inside the crop but there is noticeable empty space (background, surrounding product, padding > ~20%) around it. When fit is `loose`, you SHOULD provide a tighter `suggested_bbox` in the crop's own pixel coordinates.
   - `too_tight` — the trademark is partially cut off at the crop's edges (clipped at top / bottom / left / right). Some identifying feature of the mark continues past the crop boundary.
-  - `wrong` — Image 2 does NOT contain the registered trademark as a whole (maybe a different brand, only a partial element of the registered mark, or just background pattern). When fit is `wrong`, `contains_full_logo` MUST be false.
+  - `wrong` — Image 2 does NOT contain the registered trademark as a whole
+    (maybe a different brand, only a partial element of the registered mark, or
+    just background pattern). Do not use `wrong` solely for low image quality if
+    the whole matching shape is still visible. When fit is `wrong`,
+    `contains_full_logo` MUST be false.
 
 - `confidence` — your confidence in the `contains_full_logo` decision, 0.0 to 1.0. Use the full range — 0.95+ is reserved for unmistakable, textbook cases.
 

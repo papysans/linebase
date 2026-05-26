@@ -17,6 +17,7 @@ At most ONE verify call per evidence — never loops forever.
 """
 from __future__ import annotations
 
+import contextlib
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -43,9 +44,7 @@ def _refine_env_enabled() -> bool:
     import os
 
     raw = os.environ.get("LINEBASE_REFINE", "").strip().lower()
-    if raw in {"0", "false", "off", "no"}:
-        return False
-    return True
+    return raw not in {"0", "false", "off", "no"}
 
 # Substrings (case-insensitive) that mark a verify rejection as "blank-crop"
 # rather than "wrong-logo". When any of these appears in `verify_reason`,
@@ -59,20 +58,35 @@ BLANK_VERIFY_PATTERNS: tuple[str, ...] = (
     "background",
     "no part of",
 )
+SOFT_VERIFY_REJECT_PATTERNS: tuple[str, ...] = (
+    "faint",
+    "blur",
+    "blurry",
+    "degraded",
+    "low-contrast",
+    "low contrast",
+    "dirty",
+    "reflective",
+    "incomplete",
+    "distorted",
+)
 
 # Pre-gate thresholds. A crop whose pixel std-dev is below 15.0 AND whose
 # (>240,>240,>240) "near-white" pixel ratio is above 0.7 is considered
 # blank — short-circuit verify, skip the API call, fire the retry directly.
 _PRE_GATE_STD = 15.0
 _PRE_GATE_WHITE_RATIO = 0.7
+_VERIFY_UPSCALE_THRESHOLD = 400
+_LOGO_FOREGROUND_THRESHOLD = 245
+_LOOSE_BBOX_MAX_ASPECT_MISMATCH = 2.5
 
 
 @dataclass
 class VerifyResult:
     primary: MatchResult                                  # untouched Pass-1 MatchResult
     verified: bool                                        # did the verify step accept?
-    final_bbox: tuple[int, int, int, int] | None          # bbox to actually crop with (in ORIGINAL photo coords)
-    fit_label: str | None                                 # one of {tight, loose, too_tight, wrong} or None when verify skipped
+    final_bbox: tuple[int, int, int, int] | None
+    fit_label: str | None
     verify_confidence: float | None
     verify_reason: str | None
     iters: int                                            # 1 (skipped verify) or 2 (verify ran)
@@ -98,6 +112,9 @@ class VerifyResult:
     # Origin (top-left x, y) of the zoom crop in ORIGINAL coords. Surfaced for
     # provenance + frontend visualisation; None when refine never ran.
     refine_origin: tuple[int, int] | None = field(default=None)
+    # Set when Pass-1 is strong but Qwen's verifier rejects a low-quality crop.
+    soft_verified: bool = False
+    soft_verify_reason: str | None = field(default=None)
 
 
 def _clamp_bbox(
@@ -141,6 +158,55 @@ def _bbox_iou(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> flo
     return float(inter) / float(union)
 
 
+def _logo_foreground_aspect(logo_path: Path) -> float | None:
+    """Estimate the logo shape aspect ratio from non-white line-art pixels."""
+    try:
+        with Image.open(logo_path) as img:
+            arr = np.asarray(img.convert("L"))
+    except Exception:
+        return None
+    mask = arr < _LOGO_FOREGROUND_THRESHOLD
+    if not mask.any():
+        return None
+    ys, xs = np.where(mask)
+    width = int(xs.max() - xs.min() + 1)
+    height = int(ys.max() - ys.min() + 1)
+    if width <= 0 or height <= 0:
+        return None
+    return width / height
+
+
+def _loose_final_bbox_reject_reason(
+    ans: VerifyAnswer,
+    ref_bbox: tuple[int, int, int, int],
+    logo_path: Path,
+) -> str | None:
+    """Reject loose accepted crops whose final bbox shape is implausible.
+
+    A `fit=loose` verifier answer only says the mark is somewhere in the crop;
+    it is not enough to ship a final bbox that still has the wrong shape. Use
+    the registered line-art's foreground aspect as a cheap guardrail against
+    boxes that include large unrelated vertical or horizontal regions, including
+    bad `suggested_bbox` values from the verifier.
+    """
+    if ans.fit != "loose":
+        return None
+    x1, y1, x2, y2 = ref_bbox
+    bw = max(1, x2 - x1)
+    bh = max(1, y2 - y1)
+    bbox_aspect = bw / bh
+    logo_aspect = _logo_foreground_aspect(logo_path)
+    if logo_aspect is None or logo_aspect <= 0:
+        return None
+    mismatch = max(bbox_aspect / logo_aspect, logo_aspect / bbox_aspect)
+    if mismatch <= _LOOSE_BBOX_MAX_ASPECT_MISMATCH:
+        return None
+    return (
+        "loose bbox rejected: final bbox aspect "
+        f"{bbox_aspect:.2f} differs from logo aspect {logo_aspect:.2f}"
+    )
+
+
 def _is_blank_verify_reason(reason: str | None) -> bool:
     """True when the verify rejection signals "crop was blank, not a wrong logo"."""
     if not reason:
@@ -149,7 +215,35 @@ def _is_blank_verify_reason(reason: str | None) -> bool:
     return any(p in low for p in BLANK_VERIFY_PATTERNS)
 
 
-def _stats_from_rgb_array(arr: "np.ndarray[Any, Any]") -> tuple[float, float] | None:
+def _is_soft_verify_reject_reason(reason: str | None) -> bool:
+    if not reason:
+        return False
+    low = reason.lower()
+    return any(p in low for p in SOFT_VERIFY_REJECT_PATTERNS)
+
+
+def _should_soft_accept_verify_reject(
+    primary: MatchResult,
+    reason: str | None,
+    photo_path: Path,
+) -> bool:
+    """Protect strong Qwen bbox hits from low-quality verifier false rejects."""
+    if not primary.found or primary.bbox is None:
+        return False
+    if primary.confidence < 0.8:
+        return False
+    if primary.bbox_coord_mode != "qwen_normalized_1000":
+        return False
+    if not _is_soft_verify_reject_reason(reason):
+        return False
+    stats = _bbox_blank_stats(photo_path, primary.bbox)
+    if stats is None:
+        return False
+    std, white = stats
+    return white <= _PRE_GATE_WHITE_RATIO and std >= 8.0
+
+
+def _stats_from_rgb_array(arr: np.ndarray[Any, Any]) -> tuple[float, float] | None:
     """Core numpy calc shared by `_crop_blank_stats` and `_bbox_blank_stats`.
 
     Returns `(std_dev, near_white_ratio)` over the array's pixels, or None when
@@ -207,6 +301,65 @@ def _bbox_blank_stats(
     except Exception:
         return None
     return _stats_from_rgb_array(arr)
+
+
+def _verify_upscale_factor_for(longest: int) -> int:
+    """Scale factor for verifier crops that are too small to inspect reliably."""
+    if longest <= 0 or longest >= _VERIFY_UPSCALE_THRESHOLD:
+        return 1
+    if longest < 100:
+        return 4
+    return (_VERIFY_UPSCALE_THRESHOLD + longest - 1) // longest
+
+
+def _maybe_upscale_for_verify(crop_path: Path) -> tuple[Path, int]:
+    """Return a verifier input path plus the coordinate scale factor.
+
+    The original crop remains the coordinate frame for `_accept_verify`, so any
+    verifier-suggested bbox must be divided by this factor before use.
+    """
+    with Image.open(crop_path) as img:
+        w, h = img.size
+        scale = _verify_upscale_factor_for(max(w, h))
+        if scale <= 1:
+            return crop_path, 1
+        new_size = (w * scale, h * scale)
+        upscaled = img.convert("RGB").resize(new_size, Image.LANCZOS)
+
+    with tempfile.NamedTemporaryFile(suffix=crop_path.suffix or ".png", delete=False) as tmp:
+        out = Path(tmp.name)
+    save_fmt = "JPEG" if out.suffix.lower() in {".jpg", ".jpeg"} else "PNG"
+    if save_fmt == "JPEG":
+        upscaled.save(out, format=save_fmt, quality=92)
+    else:
+        upscaled.save(out, format=save_fmt)
+    return out, scale
+
+
+def _downscale_suggested_bbox(
+    answer: VerifyAnswer,
+    scale: int,
+) -> VerifyAnswer:
+    if scale <= 1 or answer.suggested_bbox is None:
+        return answer
+    sx1, sy1, sx2, sy2 = answer.suggested_bbox
+    suggested = (
+        int(round(sx1 / scale)),
+        int(round(sy1 / scale)),
+        int(round(sx2 / scale)),
+        int(round(sy2 / scale)),
+    )
+    return VerifyAnswer(
+        contains_full_logo=answer.contains_full_logo,
+        fit=answer.fit,
+        confidence=answer.confidence,
+        reason=answer.reason,
+        suggested_bbox=suggested,
+        raw_response=answer.raw_response,
+        prompt_version=answer.prompt_version,
+        model=answer.model,
+        usage=answer.usage,
+    )
 
 
 def match_with_verify(
@@ -281,6 +434,8 @@ def match_with_verify(
     verify_model = model or settings.review_model
 
     # ------- Round 0: pre-gate + verify ----------------------------------
+    soft_verified = False
+    soft_verify_reason: str | None = None
     verify, crop_bbox_used, pre_gated, _crop_stats = _verify_round(
         primary.bbox, photo_path, logo_path, orig_w, orig_h,
         settings=settings, client=client, verify_model=verify_model,
@@ -307,12 +462,30 @@ def match_with_verify(
         ok, fbb = _accept_verify(
             verify, primary.bbox, crop_bbox_used, orig_w, orig_h, verify_threshold,
         )
+        loose_reject_reason = (
+            _loose_final_bbox_reject_reason(verify, fbb, logo_path)
+            if ok and fbb is not None
+            else None
+        )
+        if loose_reject_reason:
+            ok = False
+            fbb = None
         verified = ok
         final_bbox = fbb
         fit_label_used = verify.fit
         verify_confidence_used = verify.confidence
-        verify_reason_used = verify.reason
+        verify_reason_used = loose_reject_reason or verify.reason
         verify_usage_used = verify.usage
+        if (
+            not ok
+            and loose_reject_reason is None
+            and _should_soft_accept_verify_reject(primary, verify.reason, photo_path)
+        ):
+            verified = True
+            final_bbox = primary.bbox
+            fit_label_used = "loose"
+            soft_verified = True
+            soft_verify_reason = verify.reason
 
         # ---- Iter 9 refine: tighten loose bboxes via a zoomed re-ask -----
         if (
@@ -373,11 +546,19 @@ def match_with_verify(
                     ok2, fbb2 = _accept_verify(
                         v2, new_bbox, cbox2, orig_w, orig_h, verify_threshold,
                     )
+                    loose_reject_reason2 = (
+                        _loose_final_bbox_reject_reason(v2, fbb2, logo_path)
+                        if ok2 and fbb2 is not None
+                        else None
+                    )
+                    if loose_reject_reason2:
+                        ok2 = False
+                        fbb2 = None
                     if v2.usage:
                         verify_usage_used = _sum_int_dicts(verify_usage_used, v2.usage)
                     fit_label_used = v2.fit
                     verify_confidence_used = v2.confidence
-                    verify_reason_used = v2.reason
+                    verify_reason_used = loose_reject_reason2 or v2.reason
                     if ok2:
                         verified, final_bbox, retry_bbox_used = True, fbb2, new_bbox
                         # Refine can chain with retry: when the retry's verify
@@ -418,6 +599,8 @@ def match_with_verify(
         refined=refined_used,
         refine_bbox=refine_bbox_used,
         refine_origin=refine_origin_used,
+        soft_verified=soft_verified,
+        soft_verify_reason=soft_verify_reason,
     )
 
 
@@ -485,6 +668,8 @@ def _refine_round(
     )
     if not ok2 or fbb2 is None:
         return None
+    if _loose_final_bbox_reject_reason(v2, fbb2, logo_path):
+        return None
     # _accept_verify may have applied a tighter shrink via suggested_bbox or
     # an expansion for `too_tight`; surface that as the refined final.
     return fbb2, zoom_origin, usage_total
@@ -519,14 +704,19 @@ def _verify_round(
         stats = _crop_blank_stats(tmp_path)
         if stats is not None and stats[0] < _PRE_GATE_STD and stats[1] > _PRE_GATE_WHITE_RATIO:
             return None, cbox, True, stats
-        answer = verify_crop(
-            logo_path, tmp_path, settings=settings, client=client, model=verify_model
-        )
-    finally:
+        verify_input, verify_scale = _maybe_upscale_for_verify(tmp_path)
         try:
+            answer = verify_crop(
+                logo_path, verify_input, settings=settings, client=client, model=verify_model
+            )
+        finally:
+            if verify_input != tmp_path:
+                with contextlib.suppress(OSError):
+                    verify_input.unlink(missing_ok=True)
+        answer = _downscale_suggested_bbox(answer, verify_scale)
+    finally:
+        with contextlib.suppress(OSError):
             tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
     return answer, cbox, False, stats
 
 

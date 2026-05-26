@@ -30,6 +30,47 @@ not a 国产 vision-API issue. Verified across 126 combined calls in
 
 ---
 
+## Qwen bbox coordinates can be 0-1000 normalized on large images
+
+Symptom: bbox boxes are consistently shifted or shrunk after the VLM response
+is scaled back to the original photo. In the 2016x1512 case from
+`docs/iter13_dim_hint_report/README.md`, Qwen returned coordinates around
+`[188.5, 465.6, 269.8, 556.9]`. Treating those as pixels in the 1280x960
+transmitted image maps x1 to about 296, but the expected original-image x1 is
+about 380. Interpreting the response as a 0-1000 grounding frame maps it to
+`[380, 704, 544, 842]`.
+
+Workaround: `_map_bbox_coords_to_source` treats Qwen-family responses as
+0-1000 normalized only when the transmitted image is larger than 1000 px on at
+least one axis and all bbox values are within 0..1000. Other providers keep the
+normal "pixels in transmitted image, then divide by resize scale" path.
+
+Pipeline metadata now records `raw_bbox`, `bbox_coord_mode`, `source_size`, and
+`sent_size` so a future bad overlay can be diagnosed from the row meta without
+rerunning the model.
+
+---
+
+## Verifier `fit=loose` can still produce a bad final bbox
+
+Symptom: `verify_crop` says a candidate crop contains the logo and may even
+return `suggested_bbox`, but the final box is still much taller or wider than
+the registered mark. In `docs/truth_set/4601531_14/pair_01`, Qwen found the
+right Corvette emblem area but included page chrome and the recommendation row
+below it. The resulting box had IoU about 0.22 against the truth bbox, yet the
+old verifier path marked the row `ok`.
+
+Workaround: `_loose_final_bbox_reject_reason` checks every accepted
+`fit="loose"` final bbox, including verifier-suggested boxes, against the
+foreground aspect ratio of the registry line art. If the aspect mismatch is
+too large, the evidence is downgraded to `needs_review` with a
+`verify_reason` starting `loose bbox rejected`. The paired regression is
+`docs/truth_set/6433801_12/pair_01`, which remains accepted because its
+low-quality Qwen bbox has a plausible shape aspect after the 0-1000 coordinate
+mapping.
+
+---
+
 ## GLM-4.5V wraps output in `<|begin_of_box|>...<|end_of_box|>`
 
 Symptom: `linebase.llm.match_logo_in_photo` raises `json.JSONDecodeError` even

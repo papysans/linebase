@@ -74,6 +74,63 @@ def _resize_for_vlm(path: Path) -> tuple[Path, float]:
     return tmp, scale
 
 
+_QWEN_COORD_MODE_PREFIXES: tuple[str, ...] = ("Qwen/", "Pro/Qwen/")
+_NORMALIZED_BBOX_COORD_MAX = 1000.0
+
+
+def _is_qwen_model(model: str) -> bool:
+    return model.startswith(_QWEN_COORD_MODE_PREFIXES)
+
+
+def _coords_look_normalized_1000(coords: list[float], send_w: int, send_h: int) -> bool:
+    """Heuristic for Qwen's visual-grounding 0-1000 coordinate frame.
+
+    Qwen-family models often emit bbox coordinates in a 0-1000 frame even when
+    prompted for pixels. Treat them as normalized only when the transmitted
+    image is larger than that frame on at least one axis; for smaller images a
+    value like x=900 can be a genuine pixel coordinate.
+    """
+    if max(send_w, send_h) <= _NORMALIZED_BBOX_COORD_MAX:
+        return False
+    if not all(0.0 <= c <= _NORMALIZED_BBOX_COORD_MAX for c in coords):
+        return False
+    x1, y1, x2, y2 = coords
+    return not (x2 <= x1 or y2 <= y1)
+
+
+def _map_bbox_coords_to_source(
+    coords: list[float],
+    *,
+    model: str,
+    source_w: int,
+    source_h: int,
+    sent_w: int,
+    sent_h: int,
+    sent_scale: float,
+) -> tuple[list[float], str]:
+    """Map provider-returned bbox coords into source-image pixels.
+
+    Most OpenAI-compatible providers follow our prompt and return pixel coords
+    in the transmitted image frame; those need only the existing resize scale
+    reversal. Qwen is the exception we have observed in reports: on large
+    images it may still answer in the 0-1000 grounding frame, which must be
+    expanded directly to the original source dimensions.
+    """
+    if _is_qwen_model(model) and _coords_look_normalized_1000(coords, sent_w, sent_h):
+        return (
+            [
+                coords[0] * source_w / _NORMALIZED_BBOX_COORD_MAX,
+                coords[1] * source_h / _NORMALIZED_BBOX_COORD_MAX,
+                coords[2] * source_w / _NORMALIZED_BBOX_COORD_MAX,
+                coords[3] * source_h / _NORMALIZED_BBOX_COORD_MAX,
+            ],
+            "qwen_normalized_1000",
+        )
+    if sent_scale != 1.0:
+        return [c / sent_scale for c in coords], "sent_pixels_scaled"
+    return coords, "source_pixels"
+
+
 def _default_timeout_s() -> float:
     """Per-call OpenAI SDK timeout. Configurable via LINEBASE_LLM_TIMEOUT_S env.
 
@@ -112,6 +169,14 @@ class MatchResult:
     # 0 = parsed on first try, 1 = parsed after the stricter-retry, >1 only if
     # we ever raise the retry budget.
     json_retry_count: int = 0
+    # Coordinate diagnostics. `raw_bbox` is exactly what the provider returned
+    # before any provider-specific frame conversion; `bbox_coord_mode` records
+    # how we interpreted it. Kept optional so older tests/fixtures can construct
+    # MatchResult without caring about bbox plumbing details.
+    raw_bbox: tuple[float, float, float, float] | None = None
+    bbox_coord_mode: str | None = None
+    source_size: tuple[int, int] | None = None
+    sent_size: tuple[int, int] | None = None
 
 
 @dataclass
@@ -196,7 +261,8 @@ Respond with strict JSON, nothing else (no prose, no markdown fences):
 }
 
 Coordinate system: pixel coordinates in Image 2, 0-indexed, with (0,0) at the TOP-LEFT corner.
-x1 < x2, y1 < y2. bbox should tightly enclose the logo region, with at most ~5% padding on each side.
+x1 < x2, y1 < y2. bbox should tightly enclose the logo region, with at most ~5% padding
+on each side.
 
 If the logo appears multiple times, return the most prominent / least occluded instance.
 If you are unsure, return found=false and confidence near 0 — false positives are worse than misses.
@@ -446,11 +512,13 @@ def match_logo_in_zoomed(
     fd, tmp_name = tempfile.mkstemp(suffix=photo_path.suffix or ".png")
     os.close(fd)
     zoom_path = Path(tmp_name)
+    zoom_upscale = 1
     try:
         with Image.open(photo_path) as src:
             crop_img = src.convert("RGB").crop((zx1, zy1, zx2, zy2))
         cw, ch = crop_img.size
         if max(cw, ch) < 400:
+            zoom_upscale = 2
             crop_img = crop_img.resize((cw * 2, ch * 2), Image.LANCZOS)
         save_fmt = "JPEG" if zoom_path.suffix.lower() in {".jpg", ".jpeg"} else "PNG"
         if save_fmt == "JPEG":
@@ -479,21 +547,16 @@ def match_logo_in_zoomed(
     # to the un-upscaled crop coords (= zoom_origin frame) so the caller's
     # translate to global coords lines up.
     if result.bbox is not None:
-        # Re-read what _run_match_call actually saw. When we upscaled the crop
-        # to (cw*2, ch*2), _run_match_call clamped bbox to that size. We undo
-        # the upscale here by checking the saved file's dims vs the un-upscaled
-        # crop dims.
+        # Use the explicit factor; inferring from bbox size misses marks in
+        # the upper-left half of an upscaled crop.
         bx1, by1, bx2, by2 = result.bbox
         crop_w = zx2 - zx1
         crop_h = zy2 - zy1
-        # The file may have been 2x-upscaled; detect by comparing to result's
-        # clamping behaviour. Simplest: if either bbox coord exceeds the
-        # un-upscaled crop dims, we upscaled — divide by 2.
-        if bx2 > crop_w or by2 > crop_h:
-            bx1 //= 2
-            by1 //= 2
-            bx2 = max(bx1 + 1, bx2 // 2)
-            by2 = max(by1 + 1, by2 // 2)
+        if zoom_upscale > 1:
+            bx1 //= zoom_upscale
+            by1 //= zoom_upscale
+            bx2 = max(bx1 + 1, bx2 // zoom_upscale)
+            by2 = max(by1 + 1, by2 // zoom_upscale)
         bx1 = max(0, min(bx1, crop_w - 1))
         by1 = max(0, min(by1, crop_h - 1))
         bx2 = max(bx1 + 1, min(bx2, crop_w))
@@ -586,13 +649,25 @@ def _run_match_call(
 
     send_logo_path, _logo_scale = _resize_for_vlm(logo_path)
     send_photo_path, photo_scale = _resize_for_vlm(photo_path)
+    with Image.open(send_logo_path) as _li:
+        logo_send_w, logo_send_h = _li.size
+    with Image.open(send_photo_path) as _pi:
+        photo_send_w, photo_send_h = _pi.size
 
     try:
         user_content = [
             {"type": "text", "text": prompt_text},
-            {"type": "text", "text": "Image 1 (LOGO):"},
+            {"type": "text", "text": f"Image 1 (LOGO): {logo_send_w}x{logo_send_h} pixels"},
             {"type": "image_url", "image_url": {"url": _image_to_data_url(send_logo_path)}},
-            {"type": "text", "text": "Image 2 (PHOTO):"},
+            {
+                "type": "text",
+                "text": (
+                    f"Image 2 (PHOTO): {photo_send_w}x{photo_send_h} pixels. "
+                    "Return bbox coords as integers within "
+                    f"[0,{photo_send_w - 1}] x [0,{photo_send_h - 1}]; "
+                    "do NOT normalize."
+                ),
+            },
             {"type": "image_url", "image_url": {"url": _image_to_data_url(send_photo_path)}},
         ]
         messages: list[dict] = [{"role": "user", "content": user_content}]
@@ -633,13 +708,27 @@ def _run_match_call(
         except (TypeError, ValueError):
             coords = None
         if coords is not None:
-            if photo_scale != 1.0:
-                coords = [c / photo_scale for c in coords]
+            raw_coords = tuple(coords)
+            coords, bbox_coord_mode = _map_bbox_coords_to_source(
+                coords,
+                model=use_model,
+                source_w=orig_w,
+                source_h=orig_h,
+                sent_w=photo_send_w,
+                sent_h=photo_send_h,
+                sent_scale=photo_scale,
+            )
             x1 = max(0, min(int(round(coords[0])), orig_w - 1))
             y1 = max(0, min(int(round(coords[1])), orig_h - 1))
             x2 = max(x1 + 1, min(int(round(coords[2])), orig_w))
             y2 = max(y1 + 1, min(int(round(coords[3])), orig_h))
             bbox = (x1, y1, x2, y2)
+        else:
+            raw_coords = None
+            bbox_coord_mode = None
+    else:
+        raw_coords = None
+        bbox_coord_mode = None
 
     def _scalar(key: str) -> float:
         v = data.get(key)
@@ -664,6 +753,10 @@ def _run_match_call(
         completeness=_scalar("completeness"),
         isolation=_scalar("isolation"),
         json_retry_count=retry_count,
+        raw_bbox=raw_coords,
+        bbox_coord_mode=bbox_coord_mode,
+        source_size=(orig_w, orig_h),
+        sent_size=(photo_send_w, photo_send_h),
     )
 
 
@@ -730,8 +823,14 @@ def verify_crop(
     # frame. We scale `suggested_bbox` back to the original crop's pixels
     # before returning so downstream callers can translate to photo coords
     # without knowing anything about the resize.
+    with Image.open(cropped_path) as _orig_crop:
+        crop_orig_w, crop_orig_h = _orig_crop.size
     send_logo_path, _logo_scale = _resize_for_vlm(logo_path)
     send_crop_path, crop_scale = _resize_for_vlm(cropped_path)
+    with Image.open(send_logo_path) as _li:
+        logo_send_w, logo_send_h = _li.size
+    with Image.open(send_crop_path) as _ci:
+        crop_send_w, crop_send_h = _ci.size
 
     try:
         logo_url = _image_to_data_url(send_logo_path)
@@ -742,9 +841,17 @@ def verify_crop(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {"type": "text", "text": "Image 1 (LOGO):"},
+                    {"type": "text", "text": f"Image 1 (LOGO): {logo_send_w}x{logo_send_h} pixels"},
                     {"type": "image_url", "image_url": {"url": logo_url}},
-                    {"type": "text", "text": "Image 2 (CANDIDATE CROP):"},
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Image 2 (CANDIDATE CROP): {crop_send_w}x{crop_send_h} "
+                            "pixels. suggested_bbox coords MUST be integers within "
+                            f"[0,{crop_send_w - 1}] x [0,{crop_send_h - 1}]; "
+                            "do NOT normalize."
+                        ),
+                    },
                     {"type": "image_url", "image_url": {"url": crop_url}},
                 ],
             }
@@ -782,8 +889,15 @@ def verify_crop(
     if sugg_raw and isinstance(sugg_raw, (list, tuple)) and len(sugg_raw) == 4:
         try:
             sf = [float(v) for v in sugg_raw]
-            if crop_scale != 1.0:
-                sf = [c / crop_scale for c in sf]
+            sf, _sugg_mode = _map_bbox_coords_to_source(
+                sf,
+                model=use_model,
+                source_w=crop_orig_w,
+                source_h=crop_orig_h,
+                sent_w=crop_send_w,
+                sent_h=crop_send_h,
+                sent_scale=crop_scale,
+            )
             suggested = (
                 int(round(sf[0])),
                 int(round(sf[1])),

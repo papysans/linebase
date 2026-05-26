@@ -14,23 +14,23 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import tempfile
 import time
 from collections import defaultdict
+from collections.abc import AsyncIterator
 from contextlib import suppress
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, AsyncIterator
-
-import os
+from typing import Any
 
 from PIL import Image, ImageStat
 
 from linebase import store
 from linebase.config import Settings
 from linebase.crop import crop_to_bbox
+from linebase.edge_refine import edge_refine_bbox
 from linebase.fetch import fetch
-from linebase.io_excel import iter_rows
 from linebase.llm import MatchResult, match_logo_in_photo, verify_crop
 from linebase.sift_refine import sift_refine_bbox
 from linebase.verify_loop import VerifyResult, _bbox_blank_stats, match_with_verify
@@ -88,6 +88,38 @@ def _sift_recall_enabled() -> bool:
 # searches the whole photo and so demands more geometric agreement before
 # overruling the VLM's "not found" verdict.
 _SIFT_RECALL_MIN_INLIERS = 10
+
+
+def _edge_refine_enabled() -> bool:
+    """Iter 11 — Edge-based shape matching after Pass-1. DEFAULT ON.
+
+    Replaces SIFT for the line-art ↔ printed-logo case. Pure CV (zero LLM
+    cost): Canny → findContours → matchShapes with Hu moments inside the
+    3x-expanded VLM region. Per USPTO patent 9536171 "Logo detection by edge
+    matching", this is the correct technique when the logo silhouette is
+    shared between the two images but their interior textures are not.
+    Toggle via ``LINEBASE_EDGE_REFINE=0``.
+    """
+    return _env_flag("LINEBASE_EDGE_REFINE", default=True)
+
+
+def _edge_recall_enabled() -> bool:
+    """Iter 11 — Whole-photo edge match for Pass-1 found=False rows. DEFAULT
+    ON. Same shape-matching algorithm as the refine path but applied to the
+    whole photo. Uses a stricter shape-distance threshold (``< 0.5``) than
+    the refine path (``< 1.0``) because the whole-photo search space is much
+    larger and the prior on a real logo being present is weaker. Toggle via
+    ``LINEBASE_EDGE_RECALL=0``.
+    """
+    return _env_flag("LINEBASE_EDGE_RECALL", default=True)
+
+
+# Iter 11 — stricter shape-distance ceiling for the whole-photo recall path.
+# matchShapes I1 distances cluster near 0 for true matches and balloon past
+# 1.0 for unrelated contours; the refine path is forgiven up to 1.0 because
+# the VLM already narrowed the region, but recall has no such narrowing and
+# so demands a tighter match before overruling the VLM's "not found".
+_EDGE_RECALL_MAX_DISTANCE = 0.5
 
 
 def _env_int(name: str, default: int, *, min_value: int = 1) -> int:
@@ -326,7 +358,10 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                 raw_refine_origin = m.get("refine_origin")
                 if isinstance(raw_refine_origin, (list, tuple)) and len(raw_refine_origin) == 2:
                     with suppress(TypeError, ValueError):
-                        entry["refine_origin"] = [int(raw_refine_origin[0]), int(raw_refine_origin[1])]
+                        entry["refine_origin"] = [
+                            int(raw_refine_origin[0]),
+                            int(raw_refine_origin[1]),
+                        ]
             # Iter 10 — SIFT refine / recall provenance. Two independent
             # paths emit through this branch:
             #   - refine: VLM gave a bbox, SIFT tightened it → `sift_refined`
@@ -354,6 +389,38 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                     if si_raw is not None:
                         with suppress(TypeError, ValueError):
                             entry["sift_inliers"] = int(si_raw)
+            # Iter 11 — Edge refine / recall provenance. Mirrors the SIFT
+            # branches above (refine = tighten VLM bbox via contour shape
+            # match; recall = recover when VLM said found=false). Both
+            # surface the shape distance + candidate count for the modal's
+            # debug strip; original bbox is recorded only for the refine
+            # path (recall has no original to compare against).
+            if m.get("edge_refined"):
+                entry["edge_refined"] = True
+                sd_raw = m.get("edge_shape_distance")
+                if sd_raw is not None:
+                    with suppress(TypeError, ValueError):
+                        entry["edge_shape_distance"] = float(sd_raw)
+                cc_raw = m.get("edge_candidates_checked")
+                if cc_raw is not None:
+                    with suppress(TypeError, ValueError):
+                        entry["edge_candidates_checked"] = int(cc_raw)
+                raw_orig_edge = m.get("edge_original_bbox")
+                if isinstance(raw_orig_edge, (list, tuple)) and len(raw_orig_edge) == 4:
+                    with suppress(TypeError, ValueError):
+                        entry["edge_original_bbox"] = [float(x) for x in raw_orig_edge]
+            if m.get("edge_recall_hit"):
+                entry["edge_recall_hit"] = True
+                if "edge_shape_distance" not in entry:
+                    sd_raw = m.get("edge_shape_distance")
+                    if sd_raw is not None:
+                        with suppress(TypeError, ValueError):
+                            entry["edge_shape_distance"] = float(sd_raw)
+                if "edge_candidates_checked" not in entry:
+                    cc_raw = m.get("edge_candidates_checked")
+                    if cc_raw is not None:
+                        with suppress(TypeError, ValueError):
+                            entry["edge_candidates_checked"] = int(cc_raw)
             # Iter 7 — Pass-1 variance pre-gate provenance. Only emit when
             # the gate actually tripped so older rows don't grow null noise.
             if m.get("pass1_blank_reject"):
@@ -397,6 +464,13 @@ def _row_to_dict(row: store.JobRow) -> dict[str, Any]:
                             entry["verify_upscale"] = vu
                     except (TypeError, ValueError):
                         pass
+            for diag_key in ("raw_bbox", "bbox_coord_mode", "source_size", "sent_size"):
+                if diag_key in m:
+                    entry[diag_key] = m.get(diag_key)
+            if m.get("soft_verified"):
+                entry["soft_verified"] = True
+                if m.get("soft_verify_reason"):
+                    entry["soft_verify_reason"] = m.get("soft_verify_reason")
             match_meta[url] = entry
     d["match_meta"] = match_meta
     return d
@@ -539,9 +613,7 @@ def _is_ark_overdue(exc: BaseException) -> bool:
     # The OpenAI SDK formats `APIStatusError` as "Error code: 402 - ...".
     # Match the literal "402" inside that prefix to catch billing errors from
     # providers that don't include the Ark-specific markers above.
-    if "error code: 402" in msg:
-        return True
-    return False
+    return "error code: 402" in msg
 
 
 # Job-level "we've already warned about this provider being broke" set.
@@ -742,6 +814,11 @@ def _build_tile_result(
         clarity=tile_res.clarity,
         completeness=tile_res.completeness,
         isolation=tile_res.isolation,
+        json_retry_count=tile_res.json_retry_count,
+        raw_bbox=tile_res.raw_bbox,
+        bbox_coord_mode=tile_res.bbox_coord_mode,
+        source_size=tile_res.source_size,
+        sent_size=tile_res.sent_size,
     )
 
 
@@ -997,7 +1074,7 @@ async def _process_row(
     # though it's currently unused downstream).
     async def _one_evidence(
         url: str, ev_idx: int,
-    ) -> tuple[dict[str, Any], str | None, "MatchResult | None", "Path | None", float]:
+    ) -> tuple[dict[str, Any], str | None, MatchResult | None, Path | None, float]:
         local_cost = 0.0
         async with sem:
             try:
@@ -1143,6 +1220,14 @@ async def _process_row(
                 "prompt_version": result.prompt_version,
                 "model": result.model,
             }
+            if result.raw_bbox is not None:
+                meta["raw_bbox"] = list(result.raw_bbox)
+            if result.bbox_coord_mode:
+                meta["bbox_coord_mode"] = result.bbox_coord_mode
+            if result.source_size is not None:
+                meta["source_size"] = list(result.source_size)
+            if result.sent_size is not None:
+                meta["sent_size"] = list(result.sent_size)
             if fallback_used:
                 # Both fallback branches currently retry against the same model
                 # id (gpt-5.5), but record the model used by what actually
@@ -1199,6 +1284,10 @@ async def _process_row(
                         vr.verify_usage, model=verify_billed_model
                     )
                     meta["verify_usage"] = vr.verify_usage
+                if vr.soft_verified:
+                    meta["soft_verified"] = True
+                    if vr.soft_verify_reason:
+                        meta["soft_verify_reason"] = vr.soft_verify_reason
 
             # ---- Iter 7 Pass-1 variance pre-gate -------------------------
             # Drop Pass-1 predictions whose bbox lands on a blank/background
@@ -1254,7 +1343,140 @@ async def _process_row(
                             prompt_version=result.prompt_version,
                             model=result.model,
                             usage=result.usage,
+                            clarity=result.clarity,
+                            completeness=result.completeness,
+                            isolation=result.isolation,
+                            json_retry_count=result.json_retry_count,
+                            raw_bbox=result.raw_bbox,
+                            bbox_coord_mode=result.bbox_coord_mode,
+                            source_size=result.source_size,
+                            sent_size=result.sent_size,
                         )
+
+            # ---- Iter 11 Edge-based shape match refine ------------------
+            # Pure-CV refine path that runs BEFORE the iter-10 SIFT chain.
+            # Canny → findContours → matchShapes(Hu moments) inside the
+            # 3x-expanded VLM region. Designed for the line-art ↔ printed-
+            # logo case that SIFT cannot bridge (zero shared keypoints).
+            # Default ON; toggle via LINEBASE_EDGE_REFINE. When the iter-10
+            # SIFT refine is ALSO enabled it runs after this block and would
+            # operate on the edge-refined bbox — in practice SIFT is off so
+            # this composition is theoretical, but the chain order is the
+            # right one (cheaper shape match first, geometric refine after).
+            edge_refine_on = _edge_refine_enabled()
+            edge_recall_on = _edge_recall_enabled()
+
+            if edge_refine_on and result.found and result.bbox is not None:
+                try:
+                    edge_res = await loop.run_in_executor(
+                        None,
+                        lambda lp=logo_path, ep=ev_path, rb=result.bbox: edge_refine_bbox(
+                            lp, ep, region_bbox=rb,
+                        ),
+                    )
+                except Exception as e:
+                    _log.warning(
+                        "edge_refine_bbox raised %r — keeping VLM bbox", e,
+                    )
+                    edge_res = None
+
+                if edge_res is not None:
+                    meta["edge_refined"] = True
+                    meta["edge_shape_distance"] = edge_res.shape_distance
+                    meta["edge_candidates_checked"] = edge_res.candidates_checked
+                    meta["edge_original_bbox"] = list(result.bbox)
+                    result = MatchResult(
+                        found=result.found,
+                        bbox=edge_res.bbox,
+                        confidence=result.confidence,
+                        reason=result.reason,
+                        raw_response=result.raw_response,
+                        prompt_version=result.prompt_version,
+                        model=result.model,
+                        usage=result.usage,
+                        clarity=result.clarity,
+                        completeness=result.completeness,
+                        isolation=result.isolation,
+                        json_retry_count=result.json_retry_count,
+                        raw_bbox=result.raw_bbox,
+                        bbox_coord_mode=result.bbox_coord_mode,
+                        source_size=result.source_size,
+                        sent_size=result.sent_size,
+                    )
+                    meta["bbox"] = list(edge_res.bbox)
+                    # When verify already passed, semantic verdict still
+                    # holds (logo IS in that region); we only tighten the
+                    # pixels. Update final_bbox so the downstream crop uses
+                    # the refined coords.
+                    if vr is not None and vr.verified:
+                        vr = VerifyResult(
+                            primary=result,
+                            verified=vr.verified,
+                            final_bbox=edge_res.bbox,
+                            fit_label=vr.fit_label,
+                            verify_confidence=vr.verify_confidence,
+                            verify_reason=vr.verify_reason,
+                            iters=vr.iters,
+                            verify_usage=vr.verify_usage,
+                            retried=vr.retried,
+                            retry_reason=vr.retry_reason,
+                            retry_bbox=vr.retry_bbox,
+                        )
+
+            # Iter 11 — Edge recall: whole-photo shape match when Pass-1
+            # returned found=False (or the variance gate nulled it). Tighter
+            # shape-distance threshold than refine because the search space
+            # is much larger and the prior on a real logo is weaker.
+            if edge_recall_on and not result.found:
+                try:
+                    edge_recall_res = await loop.run_in_executor(
+                        None,
+                        lambda lp=logo_path, ep=ev_path: edge_refine_bbox(
+                            lp, ep, region_bbox=None,
+                        ),
+                    )
+                except Exception as e:
+                    _log.warning(
+                        "edge_refine_bbox(recall) raised %r — skipping", e,
+                    )
+                    edge_recall_res = None
+
+                if (
+                    edge_recall_res is not None
+                    and edge_recall_res.shape_distance <= _EDGE_RECALL_MAX_DISTANCE
+                ):
+                    meta["edge_recall_hit"] = True
+                    meta["edge_shape_distance"] = edge_recall_res.shape_distance
+                    meta["edge_candidates_checked"] = edge_recall_res.candidates_checked
+                    # Synthesize a found=True MatchResult mirroring the SIFT
+                    # recall path's confidence (0.6) — high enough to clear
+                    # the usual 0.5 acceptance threshold without dominating
+                    # real VLM hits in best-crop ranking.
+                    result = MatchResult(
+                        found=True,
+                        bbox=edge_recall_res.bbox,
+                        confidence=0.6,
+                        reason=(
+                            f"edge_recall: distance={edge_recall_res.shape_distance:.3f} "
+                            f"over {edge_recall_res.candidates_checked} candidates"
+                        ),
+                        raw_response=result.raw_response,
+                        prompt_version=result.prompt_version,
+                        model=result.model,
+                        usage=result.usage,
+                        clarity=result.clarity,
+                        completeness=result.completeness,
+                        isolation=result.isolation,
+                        json_retry_count=result.json_retry_count,
+                        raw_bbox=result.raw_bbox,
+                        bbox_coord_mode=result.bbox_coord_mode,
+                        source_size=result.source_size,
+                        sent_size=result.sent_size,
+                    )
+                    meta["found"] = True
+                    meta["bbox"] = list(edge_recall_res.bbox)
+                    meta["confidence"] = 0.6
+                    meta["reason"] = result.reason
 
             # ---- Iter 10 SIFT + RANSAC homography refine -----------------
             # Two paths, both pure CV (zero LLM cost):
@@ -1327,6 +1549,10 @@ async def _process_row(
                         completeness=result.completeness,
                         isolation=result.isolation,
                         json_retry_count=result.json_retry_count,
+                        raw_bbox=result.raw_bbox,
+                        bbox_coord_mode=result.bbox_coord_mode,
+                        source_size=result.source_size,
+                        sent_size=result.sent_size,
                     )
                     meta["bbox"] = list(sift_res.bbox)
                     # When verify already ran, its semantic verdict still
@@ -1392,6 +1618,10 @@ async def _process_row(
                         completeness=result.completeness,
                         isolation=result.isolation,
                         json_retry_count=result.json_retry_count,
+                        raw_bbox=result.raw_bbox,
+                        bbox_coord_mode=result.bbox_coord_mode,
+                        source_size=result.source_size,
+                        sent_size=result.sent_size,
                     )
                     meta["found"] = True
                     meta["bbox"] = list(recall_res.bbox)
@@ -1414,11 +1644,10 @@ async def _process_row(
                 # but verify rejected). Skip when verify already passed — that
                 # result is already good. Skip when Pass-1 errored (we never
                 # reach here in that case; the early return above bails first).
-                wants_tile_scan = False
-                if not result.found:
-                    wants_tile_scan = True
-                elif use_verify and vr is not None and not vr.verified:
-                    wants_tile_scan = True
+                wants_tile_scan = (
+                    not result.found
+                    or (use_verify and vr is not None and not vr.verified)
+                )
                 if wants_tile_scan:
                     # Iter 6.4 — verify-in-the-loop is now done INSIDE _tile_scan
                     # over the top-3 candidates, so a degenerate high-conf tile
@@ -1528,7 +1757,7 @@ async def _process_row(
     # confidence + bbox without having to JSON-roundtrip through `meta`.
     results_by_url: dict[str, MatchResult] = {}
 
-    for url, outcome in zip(evidences, results):
+    for url, outcome in zip(evidences, results, strict=False):
         if isinstance(outcome, BaseException):
             metas[url] = {"error": f"async: {outcome!r}"}
             crops[url] = None
@@ -1620,7 +1849,11 @@ async def _run_job(job_id: str, source_path: Path, settings: Settings) -> None:
             cost_delta = 0.0
 
         cost_total += cost_delta
-        done = sum(1 for r in store.list_job_rows(job_id) if r.status in ("ok", "bad", "needs_review", "failed"))
+        done = sum(
+            1
+            for r in store.list_job_rows(job_id)
+            if r.status in ("ok", "bad", "needs_review", "failed")
+        )
         store.update_job(job_id, done_rows=done, cost_usd=cost_total)
 
         ev_type = "row_failed" if terminal == "failed" else "row_done"
