@@ -56,6 +56,7 @@ export interface JobRow {
   evidence_urls: string[];
   status: "pending" | "running" | "ok" | "bad" | "needs_review" | "failed";
   best_crop_path: string | null;
+  all_crops?: Record<string, string | null>;
   human_status: string | null;
   notes: string | null;
   best_evidence_url?: string | null;

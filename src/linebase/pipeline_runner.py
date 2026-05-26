@@ -797,6 +797,114 @@ def _translate_tile_bbox(
     return gx1, gy1, gx2, gy2
 
 
+def _clamp_photo_bbox(
+    bbox: tuple[int, int, int, int],
+    photo_w: int,
+    photo_h: int,
+) -> tuple[int, int, int, int]:
+    x1, y1, x2, y2 = bbox
+    gx1 = max(0, min(photo_w - 1, int(x1)))
+    gy1 = max(0, min(photo_h - 1, int(y1)))
+    gx2 = max(gx1 + 1, min(photo_w, int(x2)))
+    gy2 = max(gy1 + 1, min(photo_h, int(y2)))
+    return gx1, gy1, gx2, gy2
+
+
+def _pad_photo_bbox(
+    bbox: tuple[int, int, int, int],
+    pad_ratio: float,
+    photo_w: int,
+    photo_h: int,
+) -> tuple[int, int, int, int]:
+    x1, y1, x2, y2 = bbox
+    pw = int((x2 - x1) * pad_ratio)
+    ph = int((y2 - y1) * pad_ratio)
+    return _clamp_photo_bbox((x1 - pw, y1 - ph, x2 + pw, y2 + ph), photo_w, photo_h)
+
+
+def _verify_recalled_bbox(
+    logo_path: Path,
+    photo_path: Path,
+    primary: MatchResult,
+    *,
+    settings: Settings,
+    model: str,
+) -> VerifyResult:
+    """Verify a pure-CV whole-photo recall bbox before it can produce a crop.
+
+    `match_with_verify` cannot be reused here because it would run Pass-1 again
+    and discard the bbox recovered by edge recall. This mirrors the tile-scan
+    verifier: crop the recalled region with padding, ask the verify prompt, and
+    only accept tight/loose/too_tight answers.
+    """
+    if primary.bbox is None:
+        return VerifyResult(
+            primary=primary,
+            verified=False,
+            final_bbox=None,
+            fit_label=None,
+            verify_confidence=None,
+            verify_reason="edge_recall had no bbox",
+            iters=1,
+        )
+    with Image.open(photo_path) as img:
+        photo_w, photo_h = img.size
+    bbox = _clamp_photo_bbox(primary.bbox, photo_w, photo_h)
+    padded = _pad_photo_bbox(bbox, 0.20, photo_w, photo_h)
+
+    fd, cname = tempfile.mkstemp(suffix=".png")
+    os.close(fd)
+    crop_path = Path(cname)
+    upscaled_path: Path | None = None
+    try:
+        crop_to_bbox(photo_path, padded, crop_path, pad_ratio=0.0)
+        verify_input = _maybe_upscale_for_verify(crop_path)
+        if verify_input != crop_path:
+            upscaled_path = verify_input
+        ans = verify_crop(logo_path, verify_input, settings=settings, model=model)
+    finally:
+        with suppress(OSError):
+            crop_path.unlink(missing_ok=True)
+        if upscaled_path is not None:
+            with suppress(OSError):
+                upscaled_path.unlink(missing_ok=True)
+
+    verified = bool(
+        ans.contains_full_logo
+        and ans.fit in ("tight", "loose")
+        and ans.confidence >= _TILE_SCAN_VERIFY_THRESHOLD
+    )
+    final_bbox: tuple[int, int, int, int] | None = bbox if verified else None
+    if ans.fit == "loose" and ans.suggested_bbox is not None and verified:
+        sx1, sy1, sx2, sy2 = ans.suggested_bbox
+        suggested = _clamp_photo_bbox(
+            (padded[0] + sx1, padded[1] + sy1, padded[0] + sx2, padded[1] + sy2),
+            photo_w,
+            photo_h,
+        )
+        if (
+            suggested[0] >= padded[0]
+            and suggested[1] >= padded[1]
+            and suggested[2] <= padded[2]
+            and suggested[3] <= padded[3]
+        ):
+            final_bbox = suggested
+    elif ans.fit == "too_tight" and ans.confidence >= _TILE_SCAN_VERIFY_THRESHOLD:
+        verified = True
+        final_bbox = padded
+
+    return VerifyResult(
+        primary=primary,
+        verified=verified,
+        final_bbox=final_bbox,
+        fit_label=ans.fit,
+        verify_confidence=ans.confidence,
+        verify_reason=ans.reason,
+        iters=2,
+        verify_usage=ans.usage,
+    )
+
+
 def _build_tile_result(
     tile_res: MatchResult,
     global_bbox: tuple[int, int, int, int],
@@ -1441,7 +1549,7 @@ async def _process_row(
                     edge_recall_res = await loop.run_in_executor(
                         None,
                         lambda lp=logo_path, ep=ev_path: edge_refine_bbox(
-                            lp, ep, region_bbox=None,
+                            lp, ep, region_bbox=None, whole_photo_recall=True,
                         ),
                     )
                 except Exception as e:
@@ -1486,6 +1594,47 @@ async def _process_row(
                     meta["bbox"] = list(edge_recall_res.bbox)
                     meta["confidence"] = 0.6
                     meta["reason"] = result.reason
+                    if use_verify:
+                        try:
+                            recall_vr = await loop.run_in_executor(
+                                None,
+                                lambda lp=logo_path, ep=ev_path, mr=result: _verify_recalled_bbox(
+                                    lp,
+                                    ep,
+                                    mr,
+                                    settings=settings,
+                                    model=eff_model,
+                                ),
+                            )
+                        except Exception as e:
+                            _log.warning(
+                                "verify recalled edge bbox raised %r — rejecting recall",
+                                e,
+                            )
+                            recall_vr = VerifyResult(
+                                primary=result,
+                                verified=False,
+                                final_bbox=None,
+                                fit_label="wrong",
+                                verify_confidence=0.0,
+                                verify_reason=f"edge_recall verify failed: {e}",
+                                iters=1,
+                            )
+                        vr = recall_vr
+                        meta["verified"] = bool(vr.verified)
+                        meta["fit"] = vr.fit_label
+                        meta["verify_reason"] = vr.verify_reason
+                        meta["verify_confidence"] = vr.verify_confidence
+                        meta["verify_iters"] = vr.iters
+                        meta["verify_final_bbox"] = (
+                            list(vr.final_bbox) if vr.final_bbox else None
+                        )
+                        if vr.verify_usage:
+                            local_cost += cost_estimate(
+                                vr.verify_usage,
+                                model=eff_model,
+                            )
+                            meta["verify_usage"] = vr.verify_usage
 
             # ---- Iter 10 SIFT + RANSAC homography refine -----------------
             # Two paths, both pure CV (zero LLM cost):

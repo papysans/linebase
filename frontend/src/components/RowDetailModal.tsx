@@ -39,18 +39,25 @@ interface RowDetailModalProps {
   row: JobRow;
   onClose: () => void;
   onSet: (status: PillStatus, notes?: string) => void;
+  initialEvidenceUrl?: string | null;
   /** Optional. When provided, the modal shows a 🔄 重跑 button in the header
    *  that delegates to the parent — the parent owns the rerun dialog state so
    *  the modal stays focused on hand-review. */
   onOpenRerun?: () => void;
 }
 
-export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailModalProps) {
+export function RowDetailModal({
+  row,
+  onClose,
+  onSet,
+  initialEvidenceUrl,
+  onOpenRerun,
+}: RowDetailModalProps) {
   // The center column starts on the LLM-chosen "best" evidence so the user
   // immediately sees what the model picked. Clicking thumbnails in the strip
   // swaps the center column.
   const [activeUrl, setActiveUrl] = useState<string>(
-    row.best_evidence_url || row.evidence_urls[0] || "",
+    initialEvidenceUrl || row.best_evidence_url || row.evidence_urls[0] || "",
   );
   const [notes, setNotes] = useState(row.notes ?? "");
   const current = (row.human_status ?? null) as PillStatus | null;
@@ -83,6 +90,7 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
   const activeIsolation: number | null | undefined = meta?.isolation ?? (isBest ? row.best_isolation : null);
   const activeFallbackModel: string | null | undefined =
     meta?.fallback_model ?? (isBest ? row.best_fallback_model : null);
+  const activeCropPath = row.all_crops?.[activeUrl] || (isBest ? row.best_crop_path : null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -124,11 +132,11 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
       aria-modal="true"
     >
       <div
-        className="glass-pane relative flex max-h-[92vh] w-full max-w-7xl flex-col gap-4 overflow-hidden p-5"
+        className="glass-pane relative flex h-[92vh] w-full max-w-7xl flex-col gap-3 overflow-hidden p-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div className="flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between">
           <div className="space-y-0.5">
             <h2 className="text-xl font-semibold tracking-tight">
               行 {row.row_index} · 申请号{" "}
@@ -169,7 +177,7 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
         </div>
 
         {/* three columns */}
-        <div className="grid flex-1 min-h-0 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-3">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-3 md:overflow-hidden">
           <Column title="LOGO 线稿">
             {row.logo_url ? (
               <PlainImage
@@ -198,7 +206,7 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
                   src={`/api/img?u=${encodeURIComponent(activeUrl)}`}
                   alt="evidence"
                   onLoad={measure}
-                  className="block max-h-[70vh] w-auto max-w-full rounded-2xl border border-white/40 bg-white/40 object-contain dark:border-white/10 dark:bg-white/5"
+                  className="block max-h-[40vh] w-auto max-w-full rounded-2xl border border-white/40 bg-white/40 object-contain dark:border-white/10 dark:bg-white/5"
                 />
                 {overlay && (
                   <div
@@ -222,10 +230,10 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
           </Column>
 
           <Column title="裁切结果">
-            {row.best_crop_path ? (
+            {activeCropPath ? (
               <PlainImage
                 src={`/api/jobs/${row.job_id}/file?p=${encodeURIComponent(
-                  row.best_crop_path,
+                  activeCropPath,
                 )}`}
                 alt="crop"
               />
@@ -236,9 +244,12 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
         </div>
 
         {/* footer */}
-        <div className="flex flex-col gap-3 border-t border-white/30 pt-3 dark:border-white/10">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-white/30 pt-2 dark:border-white/10">
           {activeReason && (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p
+              className="truncate text-sm text-slate-700 dark:text-slate-300"
+              title={activeReason}
+            >
               <span className="mr-2 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 reason{isBest ? "" : "（当前证据）"}
               </span>
@@ -259,7 +270,7 @@ export function RowDetailModal({ row, onClose, onSet, onOpenRerun }: RowDetailMo
               <div className="mb-1.5 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 所有证据 ({row.evidence_urls.length}) · 点击切换中间大图
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex max-h-24 gap-2 overflow-x-auto overflow-y-hidden pb-1.5 pr-1">
                 {row.evidence_urls.map((u, i) => {
                   const isActive = u === activeUrl;
                   const isThisBest = u === row.best_evidence_url;
@@ -405,7 +416,7 @@ function EvidenceThumb({
       onClick={onClick}
       title={url}
       className={cn(
-        "relative h-24 w-24 overflow-hidden rounded-xl border bg-white/40 backdrop-blur-md transition dark:bg-white/5",
+        "relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-white/40 backdrop-blur-md transition dark:bg-white/5",
         isActive
           ? "border-aurora-magenta shadow-[0_0_0_2px_rgba(240,171,252,0.6)]"
           : isBest
@@ -457,7 +468,7 @@ function Column({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-h-0 flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
           {title}
@@ -468,7 +479,7 @@ function Column({
           </span>
         )}
       </div>
-      <div className="flex flex-1 items-center justify-center overflow-auto">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
         {children}
       </div>
     </div>
@@ -480,7 +491,7 @@ function PlainImage({ src, alt }: { src: string; alt: string }) {
     <img
       src={src}
       alt={alt}
-      className="block max-h-[70vh] w-auto max-w-full rounded-2xl border border-white/40 bg-white/40 object-contain dark:border-white/10 dark:bg-white/5"
+      className="block max-h-[40vh] w-auto max-w-full rounded-2xl border border-white/40 bg-white/40 object-contain dark:border-white/10 dark:bg-white/5"
     />
   );
 }

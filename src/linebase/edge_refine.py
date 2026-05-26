@@ -51,6 +51,10 @@ _SEARCH_EXPANSION = 3.0
 _MIN_AREA = 200
 _MAX_AREA_RATIO = 0.6   # contour can't be >60% of search area
 _DIST_REJECT_THRESHOLD = 1.0  # cv2.matchShapes I1 distance
+_WHOLE_PHOTO_MIN_LONG_SIDE_RATIO = 0.03
+_WHOLE_PHOTO_MIN_SHORT_SIDE_RATIO = 0.03
+_WHOLE_PHOTO_MIN_AREA_RATIO = 0.003
+_WHOLE_PHOTO_MAX_ASPECT_MISMATCH = 3.0
 
 
 @dataclass
@@ -110,6 +114,7 @@ def edge_refine_bbox(
     photo_path: Path,
     *,
     region_bbox: tuple[int, int, int, int] | None = None,
+    whole_photo_recall: bool = False,
 ) -> EdgeRefineResult | None:
     """Run Canny + matchShapes refine inside the search region. Returns None
     on failure.
@@ -146,6 +151,8 @@ def edge_refine_bbox(
     logo_contour = _largest_contour(logo_edges)
     if logo_contour is None or len(logo_contour) < 4:
         return None
+    lx, ly, lw, lh = cv2.boundingRect(logo_contour)
+    logo_aspect = lw / max(1, lh)
 
     # Search edges → candidate contours.
     search_edges = _canny_auto(search)
@@ -164,6 +171,20 @@ def edge_refine_bbox(
             continue
         if len(c) < 4:
             continue
+        x, y, w, h = cv2.boundingRect(c)
+        if whole_photo_recall:
+            long_side = max(w, h)
+            short_side = min(w, h)
+            if long_side < _WHOLE_PHOTO_MIN_LONG_SIDE_RATIO * max(sw, sh):
+                continue
+            if short_side < _WHOLE_PHOTO_MIN_SHORT_SIDE_RATIO * min(sw, sh):
+                continue
+            if area < _WHOLE_PHOTO_MIN_AREA_RATIO * search_area:
+                continue
+            aspect = w / max(1, h)
+            mismatch = max(aspect / logo_aspect, logo_aspect / aspect)
+            if mismatch > _WHOLE_PHOTO_MAX_ASPECT_MISMATCH:
+                continue
         try:
             dist = float(
                 cv2.matchShapes(logo_contour, c, cv2.CONTOURS_MATCH_I1, 0.0)

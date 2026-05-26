@@ -161,6 +161,41 @@ def test_no_match_returns_none(tmp_path: Path) -> None:
     )
 
 
+def test_whole_photo_recall_prefers_large_document_mark_over_tiny_text(tmp_path: Path) -> None:
+    """Whole-photo recall should not be fooled by tiny text-like contours.
+
+    A USPTO document page can contain dozens of tiny square-ish glyph/marker
+    contours whose Hu moments look deceptively close to a square-ish logo. The
+    recall mode must favor a page-level reproduced mark large enough to be a
+    usable evidence crop.
+    """
+    logo = _make_line_art_square_logo(size=120)
+    logo_path = tmp_path / "logo.png"
+    _write_png(logo, logo_path)
+
+    photo = np.full((1000, 800, 3), 255, dtype=np.uint8)
+    # Tiny square-ish distractors that would rank very well by shape distance
+    # alone but are not a usable match on a document page.
+    for y in range(650, 900, 45):
+        for x in range(80, 720, 55):
+            cv2.rectangle(photo, (x, y), (x + 18, y + 18), (0, 0, 0), thickness=2)
+    # The actual reproduced mark on the document.
+    px, py, pw, ph = 260, 220, 280, 280
+    large_logo = cv2.resize(logo, (pw, ph), interpolation=cv2.INTER_NEAREST)
+    photo[py:py + ph, px:px + pw] = large_logo
+    photo_path = tmp_path / "document.png"
+    _write_png(photo, photo_path)
+
+    res = edge_refine_bbox(logo_path, photo_path, region_bbox=None, whole_photo_recall=True)
+
+    assert res is not None
+    rx1, ry1, rx2, ry2 = res.bbox
+    assert abs(rx1 - px) <= 8
+    assert abs(ry1 - py) <= 8
+    assert abs(rx2 - (px + pw)) <= 8
+    assert abs(ry2 - (py + ph)) <= 8
+
+
 def test_real_fixture_runs_without_exception() -> None:
     """Soak test against the real truth-set fixture (NBA player silhouette
     logo, Gatorade box evidence). The printed logo is colored and small on

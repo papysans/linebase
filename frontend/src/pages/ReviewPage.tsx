@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Filter, Maximize2, RotateCcw } from "lucide-react";
-import { api, type JobRow, type ModelOption } from "@/lib/api";
+import { api, type EvidenceMeta, type JobRow, type ModelOption } from "@/lib/api";
 import { setSession } from "@/lib/session";
 import { GlassButton } from "@/components/GlassButton";
 import { GlassCard } from "@/components/GlassCard";
@@ -32,6 +32,7 @@ export function ReviewPage() {
   // bound to the latest server-side state of that row (e.g., notes saved by
   // the inline pill update inside the modal show up immediately on the card).
   const [detailRowId, setDetailRowId] = useState<number | null>(null);
+  const [detailEvidenceUrl, setDetailEvidenceUrl] = useState<string | null>(null);
   // ID of the row whose per-row rerun dialog is open. Separate state from
   // detail modal so the user can open one without closing the other (the
   // modal also surfaces a 🔄 button that triggers the same dialog).
@@ -167,7 +168,10 @@ export function ReviewPage() {
             onSet={(s, n) =>
               setStatus.mutate({ rowId: r.id, status: s, notes: n })
             }
-            onOpenDetail={() => setDetailRowId(r.id)}
+            onOpenDetail={(evidenceUrl) => {
+              setDetailRowId(r.id);
+              setDetailEvidenceUrl(evidenceUrl ?? null);
+            }}
             onOpenRerun={() => setRerunRowId(r.id)}
           />
         ))}
@@ -187,7 +191,11 @@ export function ReviewPage() {
         return (
           <RowDetailModal
             row={r}
-            onClose={() => setDetailRowId(null)}
+            initialEvidenceUrl={detailEvidenceUrl}
+            onClose={() => {
+              setDetailRowId(null);
+              setDetailEvidenceUrl(null);
+            }}
             onSet={(s, n) =>
               setStatus.mutate({ rowId: r.id, status: s, notes: n })
             }
@@ -231,19 +239,21 @@ function ReviewRow({
 }: {
   row: JobRow;
   onSet: (status: PillStatus, notes?: string) => void;
-  onOpenDetail: () => void;
+  onOpenDetail: (evidenceUrl?: string | null) => void;
   onOpenRerun: () => void;
 }) {
   const [notes, setNotes] = useState(row.notes ?? "");
   const current = (row.human_status ?? null) as PillStatus | null;
-  const evidencePreview = row.evidence_urls.slice(0, 3);
 
   return (
     <GlassCard
-      className={cn("p-4 flex flex-wrap items-start gap-5", statusTone(row.human_status ?? row.status))}
+      className={cn(
+        "grid grid-cols-1 gap-4 p-4 lg:grid-cols-[5rem_minmax(0,1fr)_minmax(18rem,24rem)]",
+        statusTone(row.human_status ?? row.status),
+      )}
     >
       {/* row id */}
-      <div className="shrink-0 w-20 text-xs text-slate-500 dark:text-slate-400">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         <div className="text-[11px] uppercase tracking-wider">行</div>
         <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
           {row.row_index}
@@ -254,7 +264,7 @@ function ReviewRow({
         <GlassButton
           variant="ghost"
           size="sm"
-          onClick={onOpenDetail}
+          onClick={() => onOpenDetail(row.best_evidence_url)}
           leadingIcon={<Maximize2 size={12} />}
           className="mt-2 !px-2 !py-1 text-[11px]"
         >
@@ -272,33 +282,30 @@ function ReviewRow({
         </GlassButton>
       </div>
 
-      {/* thumbnails */}
-      <div className="flex shrink-0 flex-wrap gap-2">
-        {row.logo_url && (
-          <Thumb
-            src={`/api/img?u=${encodeURIComponent(row.logo_url)}`}
-            label="LOGO"
-          />
-        )}
-        {row.best_crop_path && (
-          <Thumb
-            src={`/api/jobs/${row.job_id}/file?p=${encodeURIComponent(row.best_crop_path)}`}
-            label="CROP"
-            accent="cyan"
-          />
-        )}
-        {evidencePreview.map((u, i) => (
-          <Thumb
-            key={i}
-            src={`/api/img?u=${encodeURIComponent(u)}`}
-            label={`EV${i + 1}`}
-            accent="violet"
-          />
-        ))}
+      <div className="min-w-0 space-y-2">
+        <div className="flex items-center gap-2">
+          {row.logo_url && (
+            <Thumb
+              src={`/api/img?u=${encodeURIComponent(row.logo_url)}`}
+              label="LOGO"
+            />
+          )}
+          <div className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
+            <div className="font-medium text-slate-700 dark:text-slate-200">
+              使用证据 {row.evidence_urls.length} 张
+            </div>
+            <div className="truncate font-mono text-[11px] text-aurora-magenta">
+              {row.best_evidence_url
+                ? `BEST EV${Math.max(1, row.evidence_urls.indexOf(row.best_evidence_url) + 1)}`
+                : "NO BEST"}
+            </div>
+          </div>
+        </div>
+        <EvidenceStrip row={row} onOpenDetail={onOpenDetail} />
       </div>
 
       {/* controls */}
-      <div className="flex min-w-[260px] flex-1 flex-col gap-2.5">
+      <div className="flex min-w-0 flex-col gap-2.5">
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           自动状态{" "}
           <span className="font-mono text-aurora-cyan">{row.status}</span>
@@ -351,6 +358,166 @@ function MetricChips({ row }: { row: JobRow }) {
           {row.best_reason}
         </span>
       )}
+    </div>
+  );
+}
+
+function EvidenceStrip({
+  row,
+  onOpenDetail,
+}: {
+  row: JobRow;
+  onOpenDetail: (evidenceUrl?: string | null) => void;
+}) {
+  if (row.evidence_urls.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-white/40 bg-white/20 px-3 py-4 text-center text-xs text-slate-500 dark:border-white/10 dark:bg-white/5">
+        无使用证据
+      </div>
+    );
+  }
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-2 pr-1">
+      {row.evidence_urls.map((url, i) => (
+        <EvidenceCandidate
+          key={`${url}-${i}`}
+          row={row}
+          url={url}
+          index={i}
+          meta={row.match_meta?.[url]}
+          cropPath={row.all_crops?.[url] ?? null}
+          isBest={url === row.best_evidence_url}
+          onOpenDetail={() => onOpenDetail(url)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function EvidenceCandidate({
+  row,
+  url,
+  index,
+  meta,
+  cropPath,
+  isBest,
+  onOpenDetail,
+}: {
+  row: JobRow;
+  url: string;
+  index: number;
+  meta: EvidenceMeta | undefined;
+  cropPath: string | null;
+  isBest: boolean;
+  onOpenDetail: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpenDetail}
+      title={url}
+      className={cn(
+        "group min-w-[148px] rounded-2xl border bg-white/35 p-2 text-left backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/50 dark:bg-white/5 dark:hover:bg-white/10",
+        isBest
+          ? "border-aurora-cyan shadow-[0_0_0_1px_rgba(56,189,248,0.45)]"
+          : "border-white/40 dark:border-white/10",
+      )}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+          EV{index + 1}
+        </span>
+        <EvidenceBadge meta={meta} isBest={isBest} />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <MiniImage src={`/api/img?u=${encodeURIComponent(url)}`} label="证据" />
+        {cropPath ? (
+          <MiniImage
+            src={`/api/jobs/${row.job_id}/file?p=${encodeURIComponent(cropPath)}`}
+            label="裁切"
+          />
+        ) : (
+          <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-white/40 bg-white/20 text-[10px] text-slate-400 dark:border-white/10 dark:bg-white/5">
+            无裁切
+          </div>
+        )}
+      </div>
+      <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+        {typeof meta?.confidence === "number" && (
+          <span className="font-mono text-aurora-cyan">
+            conf {meta.confidence.toFixed(2)}
+          </span>
+        )}
+        {meta?.fit && (
+          <span className="truncate rounded-full bg-white/45 px-1.5 py-0.5 dark:bg-white/10">
+            {meta.fit}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function EvidenceBadge({
+  meta,
+  isBest,
+}: {
+  meta: EvidenceMeta | undefined;
+  isBest: boolean;
+}) {
+  if (isBest) {
+    return (
+      <span className="rounded-full bg-aurora-cyan/85 px-1.5 py-0.5 text-[9px] font-semibold text-slate-950">
+        BEST
+      </span>
+    );
+  }
+  if (meta?.verified === false) {
+    return (
+      <span
+        className="rounded-full bg-amber-500/90 px-1.5 py-0.5 text-[9px] font-semibold text-white"
+        title={meta.verify_reason ?? undefined}
+      >
+        拒绝
+      </span>
+    );
+  }
+  if (meta?.sanity_rejected || meta?.error) {
+    return (
+      <span
+        className="rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[9px] font-semibold text-white"
+        title={meta.sanity_rejected ?? meta.error ?? undefined}
+      >
+        异常
+      </span>
+    );
+  }
+  if (meta?.found) {
+    return (
+      <span className="rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+        命中
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-slate-500/70 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+      未中
+    </span>
+  );
+}
+
+function MiniImage({ src, label }: { src: string; label: string }) {
+  return (
+    <div className="relative h-20 overflow-hidden rounded-xl border border-white/40 bg-white/40 dark:border-white/10 dark:bg-white/5">
+      <img
+        src={src}
+        alt={label}
+        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+      />
+      <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1 py-0.5 text-[9px] font-semibold text-white">
+        {label}
+      </span>
     </div>
   );
 }
