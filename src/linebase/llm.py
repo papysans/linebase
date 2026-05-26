@@ -149,6 +149,8 @@ def _default_timeout_s() -> float:
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROMPTS_DIR = REPO_ROOT / "prompts"
+_PRIMARY_PROMPT_RE = re.compile(r"v_(\d+)\.md$")
+_VERIFY_PROMPT_RE = re.compile(r"verify_v_(\d+)\.md$")
 
 
 @dataclass
@@ -208,7 +210,10 @@ def _active_prompt() -> tuple[str, str]:
 
     PROMPTS_DIR.mkdir(parents=True, exist_ok=True)
     requested = os.environ.get("LINEBASE_PROMPT_VERSION")
-    files = sorted(PROMPTS_DIR.glob("v_*.md"))
+    files = sorted(
+        (f for f in PROMPTS_DIR.glob("v_*.md") if _PRIMARY_PROMPT_RE.fullmatch(f.name)),
+        key=lambda f: int(_PRIMARY_PROMPT_RE.fullmatch(f.name).group(1)),  # type: ignore[union-attr]
+    )
     if requested:
         target = PROMPTS_DIR / f"v_{requested}.md"
         if not target.exists():
@@ -230,7 +235,10 @@ def _active_verify_prompt() -> tuple[str, str]:
 
     PROMPTS_DIR.mkdir(parents=True, exist_ok=True)
     requested = os.environ.get("LINEBASE_VERIFY_PROMPT_VERSION")
-    files = sorted(PROMPTS_DIR.glob("verify_v_*.md"))
+    files = sorted(
+        (f for f in PROMPTS_DIR.glob("verify_v_*.md") if _VERIFY_PROMPT_RE.fullmatch(f.name)),
+        key=lambda f: int(_VERIFY_PROMPT_RE.fullmatch(f.name).group(1)),  # type: ignore[union-attr]
+    )
     if requested:
         target = PROMPTS_DIR / f"verify_v_{requested}.md"
         if not target.exists():

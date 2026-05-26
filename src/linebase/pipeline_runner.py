@@ -114,6 +114,10 @@ def _edge_recall_enabled() -> bool:
     return _env_flag("LINEBASE_EDGE_RECALL", default=True)
 
 
+def _is_design_prompt_result(result: MatchResult) -> bool:
+    return result.prompt_version.startswith("design")
+
+
 # Iter 11 — stricter shape-distance ceiling for the whole-photo recall path.
 # matchShapes I1 distances cluster near 0 for true matches and balloon past
 # 1.0 for unrelated contours; the refine path is forgiven up to 1.0 because
@@ -1366,7 +1370,12 @@ async def _process_row(
             edge_refine_on = _edge_refine_enabled()
             edge_recall_on = _edge_recall_enabled()
 
-            if edge_refine_on and result.found and result.bbox is not None:
+            if (
+                edge_refine_on
+                and not _is_design_prompt_result(result)
+                and result.found
+                and result.bbox is not None
+            ):
                 try:
                     edge_res = await loop.run_in_executor(
                         None,
