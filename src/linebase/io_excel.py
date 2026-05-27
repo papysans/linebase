@@ -49,6 +49,8 @@ def iter_rows(
     max_row = ws.max_row or start_row
     if end_row is None:
         end_row = max_row
+    else:
+        end_row = min(end_row, max_row)
     out: list[dict[str, str | int | list[str] | None]] = []
     for r in range(start_row, end_row + 1):
         appno = ws[f"{appno_col}{r}"].value

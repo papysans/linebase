@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from openpyxl import load_workbook
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
@@ -138,8 +139,13 @@ def _resolve_rows(upload: store.Upload, req: CreateJobRequest) -> list[dict]:
         n = int(req.sample_params.get("n", 10))
         # rows below header. Header detection: assume row 1 = header, data starts at row 2.
         # But some sheets (图形商标tro) have row 2 also as a Chinese header — we skip rows 2-3 if hidden.
-        return iter_rows(path, req.sheet_name, req.appno_column, req.logo_column, req.evidence_column,
+        rows = iter_rows(path, req.sheet_name, req.appno_column, req.logo_column, req.evidence_column,
                          start_row=2, end_row=2 + n - 1 + 2)
+        usable = [r for r in rows if r["logo_url"] or r["evidence_urls"]]
+        if not usable and _row_has_selected_inputs(path, req, 1):
+            return iter_rows(path, req.sheet_name, req.appno_column, req.logo_column, req.evidence_column,
+                             start_row=1, end_row=n)
+        return rows
     if req.sample_kind == "range":
         start = int(req.sample_params["start"])
         end = int(req.sample_params["end"])
@@ -152,6 +158,22 @@ def _resolve_rows(upload: store.Upload, req: CreateJobRequest) -> list[dict]:
                              start_row=start, end_row=end)
         return [r for r in all_rows if r["row_index"] in ids]
     raise HTTPException(400, f"unknown sample_kind: {req.sample_kind}")
+
+
+def _row_has_selected_inputs(path: Path, req: CreateJobRequest, row_idx: int) -> bool:
+    wb = load_workbook(path, read_only=True, data_only=True)
+    try:
+        ws = wb[req.sheet_name]
+        logo = ws[f"{req.logo_column}{row_idx}"].value
+        ev = ws[f"{req.evidence_column}{row_idx}"].value
+    finally:
+        wb.close()
+    return (
+        isinstance(logo, str)
+        and logo.strip().startswith("http")
+        and isinstance(ev, str)
+        and "http" in ev
+    )
 
 
 @app.post("/api/jobs")
@@ -171,6 +193,14 @@ def create_job(req: CreateJobRequest) -> dict:
         model_value: str | None = candidate
     else:
         model_value = None
+    rows_data = _resolve_rows(upload, req)
+    # filter out blatantly empty rows (no logo URL AND no evidence)
+    rows_data = [r for r in rows_data if r["logo_url"] or r["evidence_urls"]]
+    if not rows_data:
+        raise HTTPException(
+            400,
+            "no usable rows found: check header row and selected app/logo/evidence columns",
+        )
     job = store.insert_job(
         upload_id=req.upload_id, sheet_name=req.sheet_name,
         logo_column=req.logo_column, evidence_column=req.evidence_column,
@@ -180,9 +210,6 @@ def create_job(req: CreateJobRequest) -> dict:
         verify_loop=1 if req.verify_loop else 0,
         tile_scan=1 if req.tile_scan else 0,
     )
-    rows_data = _resolve_rows(upload, req)
-    # filter out blatantly empty rows (no logo URL AND no evidence)
-    rows_data = [r for r in rows_data if r["logo_url"] or r["evidence_urls"]]
     for r in rows_data:
         store.insert_job_row(
             job_id=job.id, row_index=int(r["row_index"]),
