@@ -4,32 +4,42 @@ created: 2026-05-26
 purpose: |
   Verify-loop prompt for design-patent table evaluation. Image 1 is a patent
   line drawing or design drawing; Image 2 is a candidate crop from a product
-  photo. This prompt verifies product-shape correspondence, not trademark
-  identity or branding use.
+  photo. This prompt verifies design correspondence, including product-shape
+  designs and surface/ornamental patterns, not trademark identity or branding
+  use.
 ---
 You are given two images.
 
-**Image 1** is a design-patent line drawing or product design reference.
+**Image 1** is a design-patent line drawing or design reference.
 **Image 2** is a CANDIDATE CROPPED REGION cut from a real-world product photo.
 A first-pass model already thought this crop contains the product/design shown
 in Image 1 and added padding around its bounding box. Your job is to verify
-whether the crop contains the corresponding real product or design feature, and
-to comment on how well the crop is sized.
+whether the crop contains the corresponding real product, design feature, or
+surface/ornamental pattern, and to comment on how well the crop is sized.
 
-You must compare visual shape only: silhouette, proportions, visible structure,
-and distinctive product features. Do NOT require Image 2 to contain a trademark
-logo, brand text, or any kind of branding. Many valid matches are plain
-products with no logo at all.
+Compare the design content that Image 1 actually depicts:
+- for product-shape designs, compare silhouette, proportions, visible
+  structure, and distinctive product features;
+- for surface/ornamental designs, compare the repeated geometry, stitching
+  layout, lattice, grid, diamond, octagonal, studded, quilted, or other
+  distinctive pattern.
+
+Do NOT require Image 2 to contain a trademark logo, brand text, or any kind of
+branding. Many valid matches are plain products with no logo at all.
 
 Return `contains_full_logo=true` when Image 2 contains the same product/design
-as Image 1, or a clearly corresponding perspective of it. Differences in color,
-material, lighting, photo angle, minor accessories, or surface texture do not
-make it wrong when the core shape and diagnostic features match.
+as Image 1, a clearly corresponding perspective of it, or the same distinctive
+surface/ornamental pattern applied to a visible product area. Differences in
+color, material, lighting, photo angle, minor accessories, or product carrier do
+not make it wrong when the diagnostic design content matches. In particular, do
+not reject a surface-pattern match merely because it appears on a different
+carrier product such as a wallet, handbag, glove, backpack, or garment.
 
-Use `fit="wrong"` only when Image 2 is a different product/design, only shows a
-small non-diagnostic fragment, or the crop misses the object. If the object is
-present but padded, use `fit="loose"` and provide a tighter `suggested_bbox` in
-the cropped image's own coordinates when you can.
+Use `fit="wrong"` only when Image 2 does not contain the corresponding design
+content, only shows a small non-diagnostic fragment, or the crop misses the
+object/pattern. If the design is present but padded, use `fit="loose"` and
+provide a tighter `suggested_bbox` in the cropped image's own coordinates when
+you can.
 
 Respond with strict JSON, no prose, no markdown fences:
 
@@ -44,14 +54,16 @@ Respond with strict JSON, no prose, no markdown fences:
 Field definitions:
 
 - `contains_full_logo` means the candidate crop contains the corresponding
-  product/design from Image 1 as a whole or as a clear equivalent view. Treat
-  this field as "contains_full_design" for this task.
-- `fit="tight"` means the product/design fills most of the crop with little
-  surrounding background and no diagnostic part cut off.
-- `fit="loose"` means the product/design is fully inside the crop but there is
-  noticeable extra background or surrounding context.
-- `fit="too_tight"` means part of the product/design is clipped by the crop edge.
-- `fit="wrong"` means the crop does not contain the corresponding design.
+  product/design or surface/ornamental design from Image 1 as a whole or as a
+  clear equivalent view/use. Treat this field as "contains_full_design" for this
+  task.
+- `fit="tight"` means the corresponding design content fills most of the crop
+  with little surrounding background and no diagnostic part cut off.
+- `fit="loose"` means the corresponding design content is fully inside the crop
+  but there is noticeable extra background or surrounding context.
+- `fit="too_tight"` means part of the design content is clipped by the crop edge.
+- `fit="wrong"` means the crop does not contain the corresponding design
+  content.
 - `suggested_bbox`, when used, is `[x1, y1, x2, y2]` in Image 2's cropped-image
   coordinates, 0-indexed, top-left origin, x1 < x2, y1 < y2.
 

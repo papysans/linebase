@@ -304,6 +304,181 @@ def test_soft_accept_rejects_near_white_blank_qwen_bbox(
     )
 
 
+def test_design_surface_soft_accepts_shape_reject_on_textured_bbox(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    logo_image: Path,
+) -> None:
+    """Design surface-pattern hits should survive verifier product-shape rejects."""
+    photo = tmp_path / "pattern.png"
+    rng = np.random.default_rng(seed=74241482)
+    arr = rng.integers(20, 200, size=(500, 500, 3), dtype="uint8")
+    _write_png(arr, photo)
+
+    primary = MatchResult(
+        found=True,
+        bbox=(80, 90, 420, 340),
+        confidence=0.95,
+        reason="The quilted diamond grid pattern matches the ornamental design.",
+        raw_response="",
+        prompt_version="design_1",
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        bbox_coord_mode="qwen_normalized_1000",
+    )
+    monkeypatch.setattr(vl, "match_logo_in_photo", lambda *a, **kw: primary)
+    monkeypatch.setattr(
+        vl,
+        "verify_crop",
+        lambda *a, **kw: VerifyAnswer(
+            contains_full_logo=False,
+            fit="wrong",
+            confidence=0.0,
+            reason=(
+                "Image 1 shows a geometric grid pattern, while Image 2 shows "
+                "a quilted handbag with a different design and structure."
+            ),
+            suggested_bbox=None,
+            raw_response="",
+            prompt_version="verify-design_1",
+            model="test",
+            usage=None,
+        ),
+    )
+
+    result = vl.match_with_verify(
+        logo_image,
+        photo,
+        max_iters=2,
+        verify_threshold=0.6,
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        refine=False,
+    )
+
+    assert result.verified is True
+    assert result.soft_verified is True
+    assert result.final_bbox == primary.bbox
+    assert result.fit_label == "loose"
+
+
+def test_design_surface_soft_accepts_generic_not_a_match_reject(
+    tmp_path: Path,
+) -> None:
+    """74241482-style quilted-surface rejects can be rescued without shape wording."""
+    photo = tmp_path / "quilted.png"
+    rng = np.random.default_rng(seed=1010)
+    arr = rng.integers(20, 200, size=(500, 500, 3), dtype="uint8")
+    _write_png(arr, photo)
+
+    primary = MatchResult(
+        found=True,
+        bbox=(80, 90, 420, 340),
+        confidence=0.95,
+        reason="The quilted diamond pattern and stitching layout match the surface design.",
+        raw_response="",
+        prompt_version="design_1",
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        bbox_coord_mode="qwen_normalized_1000",
+    )
+
+    assert vl._should_soft_accept_verify_reject(
+        primary,
+        "Image 1 shows a geometric grid pattern, while Image 2 shows a "
+        "quilted leather pattern with a logo, which is not a match.",
+        photo,
+    )
+
+
+def test_design_surface_soft_accept_respects_hard_negative_surface_terms(
+    tmp_path: Path,
+) -> None:
+    """Verifier negatives like floral/different-pattern should stay rejected."""
+    photo = tmp_path / "floral.png"
+    rng = np.random.default_rng(seed=2424)
+    arr = rng.integers(20, 200, size=(500, 500, 3), dtype="uint8")
+    _write_png(arr, photo)
+
+    primary = MatchResult(
+        found=True,
+        bbox=(80, 90, 420, 340),
+        confidence=0.95,
+        reason="The blouse displays the same diamond lattice surface pattern.",
+        raw_response="",
+        prompt_version="design_1",
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        bbox_coord_mode="qwen_normalized_1000",
+    )
+
+    assert (
+        vl._should_soft_accept_verify_reject(
+            primary,
+            "Image 1 shows a geometric grid pattern, while Image 2 shows a "
+            "floral print on a garment, with no matching design features.",
+            photo,
+        )
+        is False
+    )
+
+
+def test_design_surface_soft_accept_still_rejects_blank_bbox(
+    tmp_path: Path,
+) -> None:
+    """Surface-pattern soft accept cannot rescue a high-confidence blank bbox."""
+    photo = tmp_path / "blank_design.png"
+    arr = np.full((500, 500, 3), 250, dtype="uint8")
+    _write_png(arr, photo)
+
+    primary = MatchResult(
+        found=True,
+        bbox=(80, 90, 420, 340),
+        confidence=0.98,
+        reason="The geometric grid pattern matches.",
+        raw_response="",
+        prompt_version="design_1",
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        bbox_coord_mode="qwen_normalized_1000",
+    )
+
+    assert (
+        vl._should_soft_accept_verify_reject(
+            primary,
+            "Image 1 shows a geometric grid pattern, while Image 2 shows a "
+            "wallet with no visual shape correspondence.",
+            photo,
+        )
+        is False
+    )
+
+
+def test_non_design_shape_reject_does_not_soft_accept(
+    tmp_path: Path,
+) -> None:
+    """The design-surface rule must not loosen normal trademark/logo jobs."""
+    photo = tmp_path / "textured_logo.png"
+    rng = np.random.default_rng(seed=77)
+    arr = rng.integers(20, 200, size=(500, 500, 3), dtype="uint8")
+    _write_png(arr, photo)
+
+    primary = MatchResult(
+        found=True,
+        bbox=(80, 90, 420, 340),
+        confidence=0.98,
+        reason="A geometric grid pattern is present.",
+        raw_response="",
+        prompt_version="4",
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+        bbox_coord_mode="qwen_normalized_1000",
+    )
+
+    assert (
+        vl._should_soft_accept_verify_reject(
+            primary,
+            "Image 2 is a different product with no visual shape correspondence.",
+            photo,
+        )
+        is False
+    )
+
+
 def test_loose_verify_rejects_aspect_mismatch_after_suggestion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

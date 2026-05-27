@@ -70,6 +70,50 @@ SOFT_VERIFY_REJECT_PATTERNS: tuple[str, ...] = (
     "incomplete",
     "distorted",
 )
+DESIGN_SURFACE_TERMS: tuple[str, ...] = (
+    "cannage",
+    "diamond",
+    "geometric",
+    "grid",
+    "lattice",
+    "motif",
+    "octagonal",
+    "ornament",
+    "ornamental",
+    "pattern",
+    "quilt",
+    "quilted",
+    "repeat",
+    "repeating",
+    "stitch",
+    "stitched",
+    "studded",
+    "surface",
+    "texture",
+)
+DESIGN_SHAPE_REJECT_TERMS: tuple[str, ...] = (
+    "different design",
+    "different product",
+    "different structure",
+    "fundamentally different",
+    "no matching shape",
+    "no matching structure",
+    "no visual shape correspondence",
+    "shape correspondence",
+    "unrelated product",
+    "visually unrelated",
+)
+DESIGN_SURFACE_REJECT_TERMS: tuple[str, ...] = (
+    "no matching design content",
+    "not a match",
+)
+DESIGN_SURFACE_HARD_REJECT_TERMS: tuple[str, ...] = (
+    "different pattern",
+    "floral",
+    "without the specified surface design",
+)
+DESIGN_SURFACE_SOFT_MIN_CONFIDENCE = 0.90
+DESIGN_EDGE_RECALL_SOFT_MAX_DISTANCE = 0.10
 
 # Pre-gate thresholds. A crop whose pixel std-dev is below 15.0 AND whose
 # (>240,>240,>240) "near-white" pixel ratio is above 0.7 is considered
@@ -222,19 +266,73 @@ def _is_soft_verify_reject_reason(reason: str | None) -> bool:
     return any(p in low for p in SOFT_VERIFY_REJECT_PATTERNS)
 
 
+def _contains_any(text: str | None, patterns: tuple[str, ...]) -> bool:
+    if not text:
+        return False
+    low = text.lower()
+    return any(p in low for p in patterns)
+
+
+def _edge_recall_distance(primary: MatchResult) -> float | None:
+    low = (primary.reason or "").lower()
+    if "edge_recall:" not in low or "distance=" not in low:
+        return None
+    raw = low.split("distance=", 1)[1].split(maxsplit=1)[0].strip(" ,;")
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _is_design_surface_verify_reject(
+    primary: MatchResult,
+    reason: str | None,
+) -> bool:
+    """True for design-patent surface-pattern hits rejected as product-shape mismatches."""
+    if not primary.prompt_version.startswith("design"):
+        return False
+    text = f"{primary.reason or ''} {reason or ''}"
+    if not _contains_any(text, DESIGN_SURFACE_TERMS):
+        return False
+    if _contains_any(reason, DESIGN_SURFACE_HARD_REJECT_TERMS):
+        return False
+    if not (
+        _contains_any(reason, DESIGN_SHAPE_REJECT_TERMS)
+        or _contains_any(reason, DESIGN_SURFACE_REJECT_TERMS)
+    ):
+        return False
+    if (
+        primary.confidence >= DESIGN_SURFACE_SOFT_MIN_CONFIDENCE
+    ):
+        return True
+    edge_distance = _edge_recall_distance(primary)
+    return (
+        edge_distance is not None
+        and edge_distance <= DESIGN_EDGE_RECALL_SOFT_MAX_DISTANCE
+    )
+
+
 def _should_soft_accept_verify_reject(
     primary: MatchResult,
     reason: str | None,
     photo_path: Path,
 ) -> bool:
-    """Protect strong Qwen bbox hits from low-quality verifier false rejects."""
+    """Protect strong bbox hits from verifier false rejects.
+
+    Two narrowly-scoped cases are rescued:
+    - design-patent surface/ornamentation matches where the verifier rejects
+      only because the evidence is a different product carrier;
+    - historical Qwen low-quality false rejects on non-blank crops.
+    """
     if not primary.found or primary.bbox is None:
         return False
-    if primary.confidence < 0.8:
-        return False
-    if primary.bbox_coord_mode != "qwen_normalized_1000":
-        return False
-    if not _is_soft_verify_reject_reason(reason):
+    design_surface_reject = _is_design_surface_verify_reject(primary, reason)
+    qwen_low_quality_reject = (
+        primary.confidence >= 0.8
+        and primary.bbox_coord_mode == "qwen_normalized_1000"
+        and _is_soft_verify_reject_reason(reason)
+    )
+    if not (design_surface_reject or qwen_low_quality_reject):
         return False
     stats = _bbox_blank_stats(photo_path, primary.bbox)
     if stats is None:

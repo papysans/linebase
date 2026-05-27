@@ -219,3 +219,55 @@ def test_tile_scan_returns_none_when_all_verify_fail(tmp_path: Path) -> None:
     assert prov.get("tile_attempts") == 9
     # `tile_verified_idx` must be absent when no tile won verify.
     assert "tile_verified_idx" not in prov
+
+
+def test_edge_recall_verify_soft_accepts_design_surface_shape_reject(
+    tmp_path: Path,
+) -> None:
+    """Edge recall on design-surface rows can pass when verifier only objects to carrier shape."""
+    logo = tmp_path / "logo.png"
+    photo = tmp_path / "photo.png"
+    _write_logo(logo)
+    rng = np.random.default_rng(seed=74241482)
+    arr = rng.integers(20, 200, size=(500, 500, 3), dtype="uint8")
+    Image.fromarray(arr, "RGB").save(photo)
+
+    primary = MatchResult(
+        found=True,
+        bbox=(90, 100, 360, 330),
+        confidence=0.6,
+        reason="edge_recall: distance=0.049 over 4 candidates",
+        raw_response="",
+        prompt_version="design_1",
+        model="Qwen/Qwen3-VL-30B-A3B-Instruct",
+    )
+
+    def fake_verify_rejects(*_a, **_kw):
+        return VerifyAnswer(
+            contains_full_logo=False,
+            fit="wrong",
+            confidence=0.0,
+            reason=(
+                "Image 1 shows a geometric grid pattern, while Image 2 shows "
+                "a quilted handbag with handles; no visual shape correspondence exists."
+            ),
+            suggested_bbox=None,
+            raw_response="",
+            prompt_version="verify-design_1",
+            model="fake-verify-model",
+            usage=_usage(),
+        )
+
+    with patch.object(pr, "verify_crop", side_effect=fake_verify_rejects):
+        result = pr._verify_recalled_bbox(
+            logo,
+            photo,
+            primary,
+            settings=_FakeSettings(),
+            model="fake-model",
+        )
+
+    assert result.verified is True
+    assert result.soft_verified is True
+    assert result.final_bbox == primary.bbox
+    assert result.fit_label == "loose"

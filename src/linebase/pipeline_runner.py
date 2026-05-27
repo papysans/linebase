@@ -31,9 +31,14 @@ from linebase.config import Settings
 from linebase.crop import crop_to_bbox
 from linebase.edge_refine import edge_refine_bbox
 from linebase.fetch import fetch
-from linebase.llm import MatchResult, match_logo_in_photo, verify_crop
+from linebase.llm import MatchResult, VerifyAnswer, match_logo_in_photo, verify_crop
 from linebase.sift_refine import sift_refine_bbox
-from linebase.verify_loop import VerifyResult, _bbox_blank_stats, match_with_verify
+from linebase.verify_loop import (
+    VerifyResult,
+    _bbox_blank_stats,
+    _should_soft_accept_verify_reject,
+    match_with_verify,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -892,6 +897,27 @@ def _verify_recalled_bbox(
     elif ans.fit == "too_tight" and ans.confidence >= _TILE_SCAN_VERIFY_THRESHOLD:
         verified = True
         final_bbox = padded
+    soft_verified = False
+    soft_verify_reason: str | None = None
+    if (
+        not verified
+        and _should_soft_accept_verify_reject(primary, ans.reason, photo_path)
+    ):
+        verified = True
+        final_bbox = bbox
+        ans = VerifyAnswer(
+            contains_full_logo=True,
+            fit="loose",
+            confidence=max(ans.confidence, _TILE_SCAN_VERIFY_THRESHOLD),
+            reason=ans.reason,
+            suggested_bbox=None,
+            raw_response=ans.raw_response,
+            prompt_version=ans.prompt_version,
+            model=ans.model,
+            usage=ans.usage,
+        )
+        soft_verified = True
+        soft_verify_reason = ans.reason
 
     return VerifyResult(
         primary=primary,
@@ -902,6 +928,8 @@ def _verify_recalled_bbox(
         verify_reason=ans.reason,
         iters=2,
         verify_usage=ans.usage,
+        soft_verified=soft_verified,
+        soft_verify_reason=soft_verify_reason,
     )
 
 
@@ -1629,6 +1657,10 @@ async def _process_row(
                         meta["verify_final_bbox"] = (
                             list(vr.final_bbox) if vr.final_bbox else None
                         )
+                        if vr.soft_verified:
+                            meta["soft_verified"] = True
+                            if vr.soft_verify_reason:
+                                meta["soft_verify_reason"] = vr.soft_verify_reason
                         if vr.verify_usage:
                             local_cost += cost_estimate(
                                 vr.verify_usage,

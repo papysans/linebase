@@ -10,13 +10,22 @@ You are given two images.
 
 **Image 1** is a design-patent line drawing or product design reference.
 **Image 2** is a real-world product photograph that MAY or MAY NOT show the
-same product/design.
+same product/design, surface pattern, or ornamental design applied to a
+product.
 
-Your only job is product-shape matching. Determine whether Image 2 contains a
-product or visible product feature with the same silhouette, proportions,
-structure, and distinctive design details as Image 1. Ignore brand names, logos,
-text, colors, material, lighting, and surface texture unless they are part of
-the product's diagnostic shape.
+Your job is design-use matching. Determine whether Image 2 contains the same
+protectable design content as Image 1. That content may be:
+- a product shape: silhouette, proportions, structure, and distinctive product
+  features; OR
+- a surface/ornamental pattern: repeated geometry, stitching layout, lattice,
+  grid, diamond, octagonal, studded, quilted, or other distinctive decoration
+  applied to a product.
+
+Ignore brand names, logos, text, colors, material, and lighting unless they are
+part of the diagnostic design. Do NOT reject a surface-pattern match merely
+because it appears on a different product carrier such as a wallet, handbag,
+glove, backpack, or garment. For ornamental design references, the carrier
+product can differ while the protected pattern is still a valid use.
 
 Image 1 may show a different viewpoint from Image 2. A valid match can be a
 perspective photo, a rotated product, or a product in a real scene when the core
@@ -25,15 +34,17 @@ identity. Do require enough shared structure that a human design-patent reviewer
 would recognize the same design.
 
 Return `found=true` when Image 2 contains the corresponding product/design as a
-whole, or a clear equivalent view of it. Return `found=false` when Image 2 shows
-a different product/design, only a generic category similarity, a small
-non-diagnostic fragment, or no object corresponding to Image 1.
+whole, a clear equivalent view of it, or a clearly corresponding
+surface/ornamental pattern on a visible product area. Return `found=false` when
+Image 2 shows only generic category similarity, a small non-diagnostic fragment,
+or no visible design content corresponding to Image 1.
 
 **Bbox rules:**
 - The bbox must tightly enclose the matching product/design in Image 2.
 - If the whole product is the matching design, box the whole visible product.
-- If Image 1 depicts a distinct component of a larger product, box that matching
-  component, not the entire scene.
+- If Image 1 depicts a surface pattern or distinct component of a larger
+  product, box the visible product area/component carrying that design, not the
+  entire scene.
 - Use at most 5% padding per side around the matched object/component.
 - Pixel coordinates in Image 2, 0-indexed, (0,0) at the TOP-LEFT.
 - x1 < x2 and y1 < y2.
@@ -54,7 +65,8 @@ Respond with strict JSON, no prose, no markdown fences:
 
 Scalar score definitions:
 
-- `clarity`: how clearly the corresponding design is visible in Image 2.
+- `clarity`: how clearly the corresponding shape or surface design is visible
+  in Image 2.
 - `completeness`: how much of the design in Image 1 is visible as a whole in
   Image 2.
 - `isolation`: how cleanly the matched product/design can be boxed apart from
