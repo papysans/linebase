@@ -90,7 +90,8 @@ CREATE INDEX IF NOT EXISTS idx_job_row_status ON job_row(job_id, status);
 """
 
 
-def _connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
+def _connect(db_path: Path | None = None) -> sqlite3.Connection:
+    db_path = db_path or DB_PATH
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path, isolation_level=None, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -110,7 +111,8 @@ def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
         raise
 
 
-def init_schema(db_path: Path = DB_PATH) -> None:
+def init_schema(db_path: Path | None = None) -> None:
+    db_path = db_path or DB_PATH
     with _connect(db_path) as conn:
         conn.executescript(SCHEMA)
         # Idempotent migrations for columns added after the schema's first
